@@ -1,0 +1,18 @@
+div.inline div, div.inline input {
+    float: left;
+}
+
+div.inline div.form-item {
+    padding: 10px;
+}
+
+form#properties-admin-attributes-list input.form-submit, div.field-widget-properties-table input.form-submit {
+    margin-top: 13px;
+    float: left;
+}
+
+form#properties-admin-attributes-list div.form-item-search {
+    margin-right: 5px;
+    float: left;
+}
+

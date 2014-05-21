@@ -1,0 +1,16 @@
+; $Id: properties_template.info,v 1.1 2010/12/22 19:55:20 berdir Exp $
+name = Dynamic Properties Template
+description = This module implements the template functionality for properties.
+core = 7.x
+files[] = properties_template.module
+files[] = properties_template.admin.inc
+files[] = properties_template.test
+dependencies[] = properties
+configure = admin/config/content/properties/templates
+
+; Information added by drupal.org packaging script on 2010-12-23
+version = "7.x-1.0-alpha1"
+core = "7.x"
+project = "properties"
+datestamp = "1293121027"
+

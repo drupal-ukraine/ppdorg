@@ -1,0 +1,189 @@
+<?php
+// $Id: properties_sql.install,v 1.1 2010/12/22 19:55:20 berdir Exp $
+
+/**
+ * @file
+ * Install file for properties_sql.module
+ */
+
+/**
+ * Database schema for properties_sql.
+ */
+function properties_sql_schema() {
+  $schema = array();
+
+  // 'properties_category' table
+  $schema['properties_category'] = array(
+    'description'       => '{properties_category} holds category machine_names and corresponding labels',
+    'fields'        => array(
+      'name' => array(
+        'description'   => 'machine_name of the category',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'label' => array(
+        'description'   => 'label of the category',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'translatable' => TRUE,
+      ),
+    ),
+    'primary key'     => array('name'),
+  );
+
+  // 'properties_attribute' table
+  $schema['properties_attribute'] = array(
+    'description'       => '{properties_attribute} holds category names and labels',
+    'fields'        => array(
+      'name' => array(
+        'description'   => 'machine_name of the attribute',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'label' => array(
+        'description'   => 'label of the attribute',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'translatable' => TRUE,
+      ),
+    ),
+    'primary key'     => array('name'),
+  );
+
+
+  // 'properties_category_attribute' table (intermediate table)
+  $schema['properties_category_attribute'] = array(
+    'description'       => '{properties_category_attribute} connects attributes with a category',
+    'fields'        => array(
+      'category_name' => array(
+        'description'   => 'refers to category',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'attribute_name' => array(
+        'description'   => 'refers to attribute',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'weight' => array(
+        'description'   => 'weight of the attribute in the category',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'foreign keys' => array(
+      'attributes_category' => array(
+        'table' => 'properties_category',
+        'columns' => array('name' => 'category_name'),
+        ),
+      'categories_attribute' => array(
+        'table' => 'properties_attribute',
+        'columns' => array('name' => 'attribute_name')
+        ),
+      ),
+    // MARIA Storage engine key length must not be longer than 1024 bytes.
+    'primary key'     => array(array('category_name', 100), array('attribute_name', 100)),
+  );
+
+
+  // 'properties_template' table
+  $schema['properties_template'] = array(
+    'description'       => '{properties_template} holds category names and labels',
+    'fields'        => array(
+      'name' => array(
+        'description'   => 'machine_name of the template',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'label' => array(
+        'description'   => 'label of the template',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'translatable' => TRUE,
+      ),
+    ),
+    'primary key'     => array('name'),
+  );
+
+  // 'properties_template_category' table (intermediate table)
+  $schema['properties_template_category'] = array(
+    'description'       => '{properties_template_category} connects categories with a template',
+    'fields'        => array(
+      'template_name' => array(
+        'description'   => 'refers to template',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'category_name' => array(
+        'description'   => 'refers to category',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => ''
+      ),
+      'weight' => array(
+        'description'   => 'weight of category in the template',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'foreign keys' => array(
+      'templates_category' => array(
+        'table' => 'properties_template',
+        'columns' => array('name' => 'template_name'),
+        ),
+      'category_templates' => array(
+        'table' => 'properties_category',
+        'columns' => array('name' => 'category_name')
+        ),
+      ),
+    // MARIA Storage engine key length must not be longer than 1024 bytes.
+    'primary key'     => array(array('template_name', 100), array('category_name', 100)),
+  );
+
+  return $schema;
+}
+
+/**
+ * Update from previous development version, adds weights.
+ */
+function properties_sql_update_7000() {
+  if (!db_field_exists('properties_category_attribute', 'weight')) {
+    $schema = array(
+      'description' => 'weight of the attribute in the category',
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+    );
+
+    db_add_field('properties_category_attribute', 'weight', $schema);
+  }
+
+  if (!db_field_exists('properties_template_category', 'weight')) {
+    $schema = array(
+      'description' => 'weight of category in the template',
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+    );
+
+    db_add_field('properties_template_category', 'weight', $schema);
+  }
+}

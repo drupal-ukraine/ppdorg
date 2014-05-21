@@ -1,0 +1,253 @@
+<?php
+
+// $Id: properties_template.module,v 1.1 2010/12/22 19:55:20 berdir Exp $
+
+/**
+ * Implements hook_permission().
+ */
+function properties_template_permission() {
+  return array(
+    'administer properties templates' => array(
+      'title' => t('Administer templates'),
+      'description' => t('Allows to create new, edit existing and delete templates.'),
+    ),
+    'add properties templates' => array(
+      'title' => t('Choose a template for a property field'),
+      'description' => t('Allows to choose a template when creating content with attached properties.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function properties_template_menu() {
+
+  $items['admin/config/content/properties/templates'] = array(
+    'title' => 'Templates',
+    'page callback' => 'properties_template_admin_templates_list',
+    'file' => 'properties_template.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('templates'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 10,
+  );
+
+  $items['admin/config/content/properties/templates/list'] = array(
+    'title' => 'List',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -30,
+  );
+
+  $items['admin/config/content/properties/templates/add'] = array(
+    'title' => 'Add template',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_template_admin_templates_form'),
+    'file' => 'properties_template.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('templates'),
+    'type' => MENU_LOCAL_ACTION,
+  );
+
+  $items['admin/config/content/properties/templates/edit/%properties_template'] = array(
+    'title' => 'Edit template',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_template_admin_templates_form', 6),
+    'file' => 'properties_template.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('templates'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items['admin/config/content/properties/templates/delete/%properties_template'] = array(
+    'title' => 'Delete template',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_template_admin_templates_delete', 6),
+    'file' => 'properties_template.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('templates'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function properties_template_theme() {
+  return array(
+    'properties_template_admin_templates_categories_form' => array(
+      'render element' => 'element',
+      'file' => 'properties_template.admin.inc',
+    ),
+  );
+}
+
+/**
+ * Load a template based on the provided name.
+ *
+ * @param $name
+ *   Template name.
+ */
+function properties_template_load($name) {
+  if (empty($name)) {
+    return FALSE;
+  }
+  $function_name = _properties_get_call('template', 'load');
+  return $function_name($name);
+}
+
+/**
+ * Load multiple templates based on their names.
+ *
+ * @param $names
+ *   Array of template names.
+ */
+function properties_template_load_multiple($names = array()) {
+  $function_name = _properties_get_call('template', 'load_multiple');
+  return $function_name($names);
+}
+
+/**
+ * Load a paged amount of templates.
+ * @param $per_page
+ *   Number of templates per page.
+ */
+function properties_template_load_paging($per_page, array $options = array()) {
+  $function_name = _properties_get_call('template', 'load_paging');
+  return $function_name($per_page, $options);
+}
+
+/**
+ * Save a template object.
+ *
+ * @param $template
+ *   Template object.
+ */
+function properties_template_save($template) {
+  foreach ($template->categories as $delta => $category) {
+    // New category, save it first.
+    if (!empty($category->new)) {
+      properties_category_save($category);
+    }
+    // Empty category, remove from array.
+    if (empty($category->name)) {
+      unset($template->categories[$delta]);
+    }
+  }
+  $function_name = _properties_get_call('template', 'save');
+  return $function_name($template);
+}
+
+/**
+ * Delete a template.
+ *
+ * @param $template
+ *   Template object.
+ */
+function properties_template_delete($template) {
+  $function_name = _properties_get_call('template', 'delete');
+  return $function_name($template);
+}
+
+/**
+ * Implements hook_field_attach_form().
+ */
+function properties_template_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
+
+
+  // Load fields attached to the entity.
+  $fields = field_info_instances($form['#entity_type'], $form['#bundle']);
+
+  // Loop over fields.
+  foreach ($fields as $field_name => $field) {
+
+    // If langcode is empty, get default.
+    if (empty($langcode)) {
+      $langcode = field_language($entity_type, $entity, $field_name);
+    }
+
+    $field_info = field_info_field_by_id($field['field_id']);
+    if ($field_info['type'] == 'properties' && isset($form_state[$field_name])) {
+      // Display template selection only when there are no properties.
+      if (empty($form_state[$field_name]['categories'])) {
+
+        // Bail out if permissions are missing.
+        if (!user_access('add properties templates')) {
+           return;
+        }
+
+        // Prepare options for select.
+        $templates = array(t('Choose template...'));
+        foreach (properties_template_load_paging(100) as $template) {
+          $templates[$template->name] = $template->label;
+        }
+
+        $element['template'] = array(
+          '#type' => 'select',
+          '#title' => t('Select template'),
+          '#title_display' => 'invisible',
+          '#options' => $templates,
+        );
+
+        $id = 'properties-' . drupal_html_id($field_name) . '-wrapper';
+        $element['select_template'] = array(
+          '#type' => 'submit',
+          '#value' => t('Select template'),
+          '#limit_validation_errors' => array(array($field_name, $langcode)),
+          '#submit' => array('properties_template_submit_select_template'),
+          '#ajax' => array(
+            'callback' => 'properties_widget_update_js',
+            'wrapper' => $form[$field_name][$langcode]['#properties_table_id'],
+            'effect' => 'fade',
+          ),
+        );
+        $form[$field_name][$langcode]['actions'] += $element;
+      } else {
+
+        // Bail out if permissions are missing.
+        if (!user_access('administer properties templates')) {
+           return;
+        }
+        
+        list($entity_id, , ) = entity_extract_ids($entity_type, $entity);
+        $query = array('entity_type' => $entity_type, 'entity_id' => $entity_id, 'field_name' => $field_name);
+
+        $nodeId = $form['nid']['#value'];
+        // should create such a query object ?enity_type=node&entity_id=78
+        $link = 'admin/config/content/properties/templates/add/';
+        $element['template'] = array(
+          '#type' => 'link',
+          '#title' => t('Export as template'),
+          '#href' => $link,
+          '#options' => array('query' => $query),
+        );
+        $form[$field_name][$langcode]['actions'] += $element;
+
+      }
+    }
+  }
+}
+
+/**
+ * Submit callback to add categories of a template to the form.
+ */
+function properties_template_submit_select_template($form, &$form_state) {
+  $field_name = $form_state['triggering_element']['#parents'][0];
+  $langcode = $form[$field_name]['#language'];
+  $values = $form_state['values'][$field_name][$langcode]['actions'];
+
+  // Load categories of template and add them to the form.
+  if (!empty($values['template'])) {
+    $template = properties_template_load($values['template']);
+    $categories = properties_category_load_multiple(array_keys($template->categories));
+    foreach ($template->categories as $cname => $c) {
+      $category = $categories[$cname];
+      properties_widget_add_category($category, $form_state, $field_name, $langcode);
+    }
+  }
+
+  $form_state['rebuild'] = TRUE;
+}
