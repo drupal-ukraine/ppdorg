@@ -5,4 +5,11 @@ core = 7.x
 dependencies[] = block
 dependencies[] = dblog
 
+; Contrib modules
+dependencies[] = admin_menu_toolbar
+
+; Custom modules
+
+; Features
+
 
