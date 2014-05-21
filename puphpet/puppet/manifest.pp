@@ -1406,7 +1406,7 @@ if hash_key_equals($rabbitmq_values, 'install', 1) {
   }
 }
 
-# HP Specific code
+# ppdorg Specific code
 
 # Memcache
 class { 'memcached': }
