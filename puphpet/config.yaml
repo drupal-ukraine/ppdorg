@@ -5,7 +5,7 @@ vagrantfile-local:
         box_url: 'http://box.puphpet.com/ubuntu-precise12042-x64-vbox43.box'
         hostname: null
         network:
-            private_network: 192.168.56.111
+            private_network: 192.168.56.112
             forwarded_port:
                 CocLsFE7aIwA:
                     host: '8080'
@@ -71,7 +71,7 @@ apache:
         - rewrite
     vhosts:
         EYZeANveIIwp:
-            servername: ppdorg.192.168.56.111.xip.io
+            servername: ppdorg.192.168.56.112.xip.io
             docroot: /var/www/ppdorg
             port: '80'
             setenv:
