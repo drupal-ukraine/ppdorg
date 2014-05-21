@@ -22,4 +22,4 @@ If ```xip.io``` not working - create row with
 192.168.56.112 ppdorg.192.168.56.112.xip.io
 ```
 
-in /ect/hosts
+in ```/etc/hosts```
