@@ -74,8 +74,7 @@ apache:
             servername: ppdorg.192.168.56.112.xip.io
             docroot: /var/www/ppdorg
             port: '80'
-            setenv:
-              override:
+            override:
                 - All
             custom_fragment: ''
             ssl_cert: ''
