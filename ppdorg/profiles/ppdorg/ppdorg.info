@@ -1,0 +1,8 @@
+name = ppdorg
+description = Start with modules enabled.
+version = 1.0
+core = 7.x
+dependencies[] = block
+dependencies[] = dblog
+
+
