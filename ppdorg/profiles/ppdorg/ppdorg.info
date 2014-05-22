@@ -11,5 +11,5 @@ dependencies[] = admin_menu_toolbar
 ; Custom modules
 
 ; Features
-
+dependencies[] = user_content_type
 
