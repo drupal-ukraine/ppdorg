@@ -39,7 +39,7 @@ function ppdorg_install() {
   user_role_grant_permissions(DRUPAL_ANONYMOUS_RID, array('access content'));
   user_role_grant_permissions(DRUPAL_AUTHENTICATED_RID, array('access content'));
 
-  // Add properties for Commits field
+  // Add properties for Commits field.
   properties_attribute_save((object) array(
     'label' => 'Commits count',
     'name' => 'commits_count'
