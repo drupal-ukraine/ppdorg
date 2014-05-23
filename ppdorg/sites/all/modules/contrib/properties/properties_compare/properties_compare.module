@@ -1,0 +1,439 @@
+<?php
+// $Id: properties_compare.module,v 1.1 2010/12/22 19:55:20 berdir Exp $
+
+/**
+ * @file
+ * Module file for privatemsg_compare module.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function properties_compare_permission() {
+  return array(
+    'compare properties' => array(
+      'title' => t('Compare properties of different entities'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function properties_compare_menu() {
+  $items['properties/compare'] = array(
+    'title' => 'Comparison',
+    'page callback' => 'properties_compare_page',
+    'file' => 'properties_compare.pages.inc',
+    'access arguments' => array('compare properties'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['properties/compare/delete/%/%'] = array(
+    'title' => 'Delete from compare list',
+    'page callback' => 'properties_compare_delete',
+    'page arguments' => array(3,4),
+    'file' => 'properties_compare.pages.inc',
+    'access arguments' => array('compare properties'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_entity_view().
+ */
+function properties_compare_entity_view($entity, $type, $view_mode, $langcode) {
+  if (!user_access('compare properties')) {
+    return;
+  }
+
+  // Never display fields inside block list view.
+  if (strpos($view_mode, 'properties_compare') !== FALSE) {
+    return;
+  }
+
+  $extra_fields = field_extra_fields_get_display($type, field_extract_bundle($type, $entity), $view_mode);
+  // Verify if button should be displayed for this view mode.
+  if (isset($extra_fields['properties_compare']) && (!isset($extra_fields['properties_compare']['visibility']) || $extra_fields['properties_compare']['visibility'])) {
+    $entity->content['properties_compare'] = drupal_get_form('properties_compare_add_form_' . properties_compare_create_key($type, $entity), $type, $entity);
+    $entity->content['properties_compare']['#attributes'] = array('class' => array('compare-form'));
+  }
+}
+
+/**
+ * Implements hook_field_extras_fields().
+ */
+function properties_compare_field_extra_fields() {
+  $bundles = array();
+  $fields = field_info_fields();
+  // Collect bundles with a properties field attached to them.
+  foreach ($fields as $field) {
+    if ($field['type'] == 'properties') {
+      $bundles = array_merge_recursive($bundles, $field['bundles']);
+    }
+  }
+
+  $extra = array();
+  // Add the properties_compare extra field to all these bundles.
+  foreach ($bundles as $entity_type => $entity_bundles) {
+    foreach ($entity_bundles as $bundle) {
+      $extra[$entity_type][$bundle]['display'] = array(
+        'properties_compare' => array(
+          'label' => t('Properties compare button'),
+          'description' => t('Displays a button that allows to add the entity to the comparison list'),
+          'weight' => 10,
+        )
+      );
+    }
+  }
+  return $extra;
+}
+
+/**
+ * Implements hook_forms().
+ */
+function properties_compare_forms($form_id, $args) {
+  if (strpos($form_id, 'properties_compare_add') !== FALSE) {
+    return array(
+      $form_id => array(
+        'callback' => 'properties_compare_add_form',
+      )
+    );
+  }
+}
+
+/**
+ * Form builder function; displays a form to add an entity to the compare list.
+ */
+function properties_compare_add_form($form, &$form_state, $entity_type, $entity) {
+
+  $form['entity_type'] = array(
+    '#type' => 'value',
+    '#value' => $entity_type,
+  );
+  $form['entity'] = array(
+    '#type' => 'value',
+    '#value' => $entity,
+  );
+  $exists = properties_compare_list_exists($entity_type, $entity);
+  $full = properties_compare_list_is_full();
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#disabled' => $exists || $full,
+    '#value' => $exists ? t('In comparison') : ($full ? t('Comparison list full') : t('Add to compare list')),
+  );
+  return $form;
+}
+
+/**
+ * Build a unique string key for the given entity.
+ *
+ * @param $entity_type
+ *   Type of entity, for example node or comment.
+ * @param $entity
+ *   Entity object.
+ *
+ * @return
+ *   A unique key in the form of entitytype_id.
+ */
+function properties_compare_create_key($entity_type, $entity) {
+  list($id, , ) = entity_extract_ids($entity_type, $entity);
+  return $entity_type . '_' . $id;
+}
+
+/**
+ * Returns the current compare list.
+ *
+ * @return
+ *   Returns the compare list as an array by reference.
+ */
+function &properties_compare_list() {
+  if (!isset($_SESSION['properties_compare_list'])) {
+    $_SESSION['properties_compare_list'] = array();
+  }
+  return $_SESSION['properties_compare_list'];
+}
+
+/**
+ * Checks if the compare list is full.
+ */
+function properties_compare_list_is_full() {
+  $count = count(properties_compare_list());
+  return $count >= variable_get('properties_compare_list_size', 4);
+}
+
+/**
+ * Checks if an entity is already in the compare list.
+ *
+ * @param $entity_type
+ *   Entity type of the entity that should be checked.
+ * @param $entity
+ *   Entity object that should be checked.
+ */
+function properties_compare_list_exists($entity_type, $entity) {
+  $list = properties_compare_list();
+  list($id, , ) = entity_extract_ids($entity_type, $entity);
+  $key = $entity_type . '_' . $id;
+  return isset($list[$key]);
+}
+
+/**
+ * Delete an entity from the compare list.
+ * @param $entity_type
+ *   Entity type of the entity that should be removed.
+ * @param $entity_id
+ *   Entity id of the entity that should be removed.
+ */
+function properties_compare_list_delete($entity_type, $entity_id) {
+  $list = &properties_compare_list();
+  $id = $entity_type . '_' . $entity_id;
+  if (isset($list[$id])) {
+    unset($list[$id]);
+  }
+}
+
+/**
+ * Add a new entity to the compare list.
+ *
+ * @param $entity_type
+ *   Type of entity, for example node or comment.
+ * @param $entity
+ *   Entity object.
+ */
+function properties_compare_list_add($entity_type, $entity) {
+  $list = &properties_compare_list();
+  list($id, , ) = entity_extract_ids($entity_type, $entity);
+  $list[properties_compare_create_key($entity_type, $entity)] = array(
+    'entity_type' => $entity_type,
+    'entity_id' => $id,
+  );
+}
+
+/**
+ * Clear the compare list.
+ */
+function properties_compare_list_clear() {
+  $list = &properties_compare_list();
+  $list = array();
+}
+
+/**
+ * Submit callback for add form.
+ */
+function properties_compare_add_form_submit($form, &$form_state) {
+  properties_compare_list_add($form_state['values']['entity_type'], $form_state['values']['entity']);
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function properties_compare_block_info() {
+  $blocks['compare_list'] = array(
+    'info' => t('Compare list'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function properties_compare_block_view($delta = '') {
+  if ($delta == 'compare_list') {
+    // Do not display the block on the properties/compare page.
+    if (($list = properties_compare_list())) {
+      return array(
+        'subject' => t('Compare list'),
+        'content' => drupal_get_form('properties_compare_list_form', $list),
+      );
+    }
+  }
+}
+
+/**
+ * Form builder function; display comparison list.
+ */
+function properties_compare_list_form($form, &$form_state, $list) {
+
+  drupal_add_css(drupal_get_path('module', 'properties_compare') . '/properties_compare.css');
+
+  $items = array();
+  $first = NULL;
+  $noncomparable = FALSE;
+  foreach ($list as $compare_item) {
+    $entity = reset(entity_load($compare_item['entity_type'], array($compare_item['entity_id'])));
+    if (!$entity) {
+      // Entity could not be loaded, ignore and remove from list.
+      properties_compare_list_delete($compare_item['entity_type'], $compare_item['entity_id']);
+      continue;
+    }
+
+    $uri = entity_uri($compare_item['entity_type'], $entity);
+    $uri['options'] += array('attributes' => array('class' => array('properties-compare-entity-link')));
+    $suffix = '';
+    $classes = array();
+    if (!$first) {
+      $first = $compare_item + array('entity' => $entity);
+      $classes[] = 'properties-comparable';
+    }
+    else {
+      $comparable = properties_compare_is_comparable($first['entity_type'], $first['entity'], $compare_item['entity_type'], $entity);
+      if (!$comparable) {
+        $suffix = ' *';
+        $noncomparable = TRUE;
+      }
+      $classes[] = $comparable ? 'properties-comparable' : 'properties-not-comparable';
+    }
+
+    // View mode functionality only implemented for entity_type node.
+    if ($compare_item['entity_type'] == 'node' && variable_get('properties_compare_view_mode', TRUE)) {
+      $content = node_view($entity, 'properties_compare_block');
+      $content['links']['#access'] = FALSE;
+      $label = drupal_render($content);
+      $uri['options']['html'] = TRUE;
+    }
+    else {
+      $label = entity_label($compare_item['entity_type'], $entity);
+    }
+
+    $entity_link = l($label . $suffix, $uri['path'], $uri['options']);
+    $delete_link = l(t('x', array(), array('context' => 'delete')), 'properties/compare/delete/' . $compare_item['entity_type'] . '/' . $compare_item['entity_id'], array('query' => drupal_get_destination()));
+
+    $items[] = array(
+      'data' => t('!entity_link (!delete_link)', array('!entity_link' => $entity_link, '!delete_link' => $delete_link)),
+      'class' => $classes,
+    );
+  }
+
+  $form['items'] = array(
+    '#theme' => 'item_list',
+    '#items' => $items,
+  );
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['clear'] = array(
+    '#type' => 'submit',
+    '#submit' => array('properties_compare_list_form_clear_submit'),
+    '#value' => t('Clear'),
+  );
+
+  if (count($items) > 1) {
+    $form['actions']['compare'] = array(
+      '#type' => 'submit',
+      '#submit' => array('properties_compare_list_form_compare_submit'),
+      '#value' => t('Compare'),
+    );
+  }
+
+  if ($noncomparable) {
+    $form['notice'] = array(
+      '#markup' => '<div class="properties-not-comparable-notice" >' . t('* Can not be compared with current selection.') . '</div>',
+    );
+  }
+
+  return $form;
+}
+
+/**
+ * Submit callback for block list form, redirect to comparison table.
+ */
+function properties_compare_list_form_compare_submit($form, &$form_state) {
+  $form_state['redirect'] = 'properties/compare';
+}
+
+/**
+ * Submit callback for block list form, clear compare list.
+ */
+function properties_compare_list_form_clear_submit($form, &$form_state) {
+  properties_compare_list_clear();
+}
+
+/**
+ * Callback function to check if the categorie is used in more than one entity.
+ */
+function properties_compare_filter_categories($item) {
+  return count($item) > 1;
+}
+
+/**
+ * Checks if two entites can be compared.
+ *
+ * @param $entity_type1
+ *   Entity type of first entity.
+ *
+ * @param $entity1
+ *   Object of first entity.
+ *
+ * @param $entity_type2
+ *   Entity type of second entity.
+ *
+ * @param $entity2
+ *   Object of second entity.
+ *
+ * @return
+ *   TRUE if entities can be compared, FALSE otherwise.
+ */
+function properties_compare_is_comparable($entity_type1, $entity1, $entity_type2, $entity2) {
+  // First, check entity type.
+  if ($entity_type1 != $entity_type2) {
+    return FALSE;
+  }
+
+  // Loop over hook implementations. They can either return TRUE (allow), FALSE
+  // (deny) or NULL (ignore). Access is allowed if at least one implementation
+  // returns TRUE and none returns FALSE. If neither happens, the check falls
+  // back to the default category check.
+  $allow = FALSE;
+  foreach (module_implements('properties_compare_comparable') as $module) {
+    $return = module_invoke($module, 'properties_compare_comparable', $entity_type1, $entity1, $entity_type2, $entity2);
+    if ($return === FALSE) {
+      return FALSE;
+    }
+    elseif ($return === TRUE) {
+      $allow = TRUE;
+    }
+  }
+  if ($allow) {
+    return TRUE;
+  }
+
+  // No hook returned something, check if there are any shared categories, if
+  // yes, allow comparing.
+  $shared_category = FALSE;
+  foreach (properties_extract_fields($entity_type1, $entity1) as $field_content1) {
+    foreach ($field_content1 as $property1) {
+      foreach (properties_extract_fields($entity_type2, $entity2) as $field_content2) {
+        foreach ($field_content2 as $property2) {
+          if ($property1['category'] == $property2['category']) {
+            $shared_category = TRUE;
+            break 4;
+          }
+        }
+      }
+    }
+  }
+  if (!$shared_category) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implements hook_entity_info().
+ */
+function properties_compare_entity_info() {
+  if (variable_get('properties_compare_view_mode', TRUE)) {
+    $return['node']['view modes'] = array(
+      'properties_compare_block' => array(
+        'label' => t('Properties compare block list'),
+        'custom settings' => TRUE,
+      ),
+      'properties_compare_page' => array(
+        'label' => t('Properties compare page header'),
+        'custom settings' => TRUE,
+      ),
+    );
+  }
+  return $return;
+}

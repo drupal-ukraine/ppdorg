@@ -1,0 +1,326 @@
+<?php
+// $Id: properties_sql.module,v 1.1 2010/12/22 19:55:20 berdir Exp $
+
+
+/**
+ * Save an attribute object.
+ *
+ * @param $attribute
+ *   Attribute object.
+ */
+function properties_sql_properties_attribute_save($attribute) {
+  db_merge('properties_attribute')
+    ->key(array('name' => $attribute->name))
+    ->fields(array(
+        'label' => $attribute->label,
+    ))
+    ->execute();
+}
+
+/**
+ * Delete an attribute.
+ *
+ * @param $attribute
+ *   Attribute object.
+ */
+function properties_sql_properties_attribute_delete($attribute) {
+  $num_deleted = db_delete('properties_attribute')
+    ->condition('name', $attribute->name)
+    ->execute();
+}
+
+/**
+ * Load an attribute based on the name.
+ *
+ * @param $name
+ *   Machine readable name of the attribute.
+ */
+function properties_sql_properties_attribute_load($name) {
+  return reset(properties_sql_properties_attribute_load_multiple(array($name)));
+}
+
+/**
+ * Load multiple attributes based on their names.
+ *
+ * @param $names
+ *   Array of machine readable name of the attributes.
+ */
+function properties_sql_properties_attribute_load_multiple($names = array()) {
+  return db_select('properties_attribute', 'pa')
+    ->fields('pa')
+    ->condition('name', $names)
+    ->addTag('translatable')
+    ->addTag('properties_attribute_load')
+    ->execute()
+    ->fetchAllAssoc('name');
+}
+
+/**
+ * Load a paged amount of attributes.
+ *
+ * @param $per_page
+ *   Number of attributes per page.
+ */
+function properties_sql_properties_attribute_load_paging($per_page, array $options = array()) {
+  $query = db_select('properties_attribute', 'pa')->extend('PagerDefault')
+    ->fields('pa')
+    ->limit($per_page);
+
+  if (isset($options['header'])) {
+    $query = $query
+      ->extend('TableSort')
+      ->orderByHeader($options['header']);
+  }
+
+  if (!empty($options['search'])) {
+    $query->condition(db_or()
+      ->condition('name', $options['search'] . '%', 'LIKE')
+      ->condition('label', $options['search'] . '%', 'LIKE')
+    );
+  }
+  return $query
+    ->execute()
+    ->fetchAllAssoc('name');
+}
+
+/**
+ * Save an category object.
+ *
+ * @param $category
+ *   Category object.
+ */
+function properties_sql_properties_category_save($category) {
+  db_merge('properties_category')
+    ->key(array('name' => $category->name))
+    ->fields(array(
+        'label' => $category->label,
+    ))
+    ->execute();
+
+  // First, remove all existing attribute connections.
+  db_delete('properties_category_attribute')
+    ->condition('category_name', $category->name)
+    ->execute();
+
+  $insert = db_insert('properties_category_attribute')
+    ->fields(array('category_name', 'attribute_name', 'weight'));
+  foreach ($category->attributes as $attribute) {
+    $insert->values(array(
+      'category_name' => $category->name,
+      'attribute_name' => $attribute->name,
+      'weight' => $attribute->weight,
+    ));
+  }
+  $insert->execute();
+}
+
+/**
+ * Delete an category.
+ *
+ * @param $category
+ *   Category object.
+ */
+function properties_sql_properties_category_delete($category) {
+  db_delete('properties_category')
+  ->condition('name', $category->name)
+  ->execute();
+
+  db_delete('properties_category_attribute')
+    ->condition('category_name', $category->name)
+    ->execute();
+}
+
+/**
+ * Load an category based on the name.
+ *
+ * @param $name
+ *   Machine readable name of the category.
+ */
+function properties_sql_properties_category_load($name) {
+  return reset(properties_sql_properties_category_load_multiple(array($name)));
+}
+
+/**
+ * Load multiple categories based on their names.
+ *
+ * @param $names
+ *   Array of machine readable name of the categories.
+ */
+function properties_sql_properties_category_load_multiple($names = array()) {
+  $categories = db_select('properties_category', 'pc')
+    ->fields('pc')
+    ->condition('name', $names)
+    ->addTag('translatable')
+    ->addTag('properties_category_load')
+    ->execute()
+    ->fetchAllAssoc('name');
+
+  foreach ($categories as $category) {
+    $category->attributes = array();
+  }
+
+  $query = db_select('properties_category_attribute', 'pca')
+    ->fields('pca')
+    ->condition('pca.category_name', $names)
+    ->addTag('properties_category_attribute_load')
+    ->orderBy('pca.weight');
+  $query->join('properties_attribute', 'pa', 'pca.attribute_name = pa.name');
+  $result = $query
+    ->fields('pa')
+    ->execute();
+  foreach ($result as $attribute) {
+    $categories[$attribute->category_name]->attributes[$attribute->name] = $attribute;
+  }
+  return $categories;
+}
+
+/**
+ * Load a paged amount of categories.
+ *
+ * @param $per_page
+ *   Number of categories per page.
+ */
+function properties_sql_properties_category_load_paging($per_page, array $options = array()) {
+  $query = db_select('properties_category', 'pc')->extend('PagerDefault')
+    ->fields('pc')
+    ->limit($per_page);
+
+  if (isset($options['header'])) {
+    $query = $query
+      ->extend('TableSort')
+      ->orderByHeader($options['header']);
+  }
+
+  if (!empty($options['search'])) {
+    $query->condition(db_or()
+      ->condition('name', $options['search'] . '%', 'LIKE')
+      ->condition('label', $options['search'] . '%', 'LIKE')
+    );
+  }
+  return $query
+    ->execute()
+    ->fetchAllAssoc('name');
+}
+
+
+/**
+ * Save a template object.
+ *
+ * @param $template
+ *   Template object.
+ */
+function properties_sql_properties_template_save($template) {
+  db_merge('properties_template')
+    ->key(array('name' => $template->name))
+    ->fields(array(
+        'label' => $template->label,
+    ))
+    ->execute();
+
+  // First, remove all existing category connections.
+  db_delete('properties_template_category')
+    ->condition('template_name', $template->name)
+    ->execute();
+
+  $insert = db_insert('properties_template_category')
+    ->fields(array('template_name', 'category_name', 'weight'));
+  foreach ($template->categories as $category) {
+    $insert->values(array(
+      'template_name' => $template->name,
+      'category_name' => $category->name,
+      'weight' => $category->weight,
+    ));
+  }
+  $insert->execute();
+}
+
+
+/**
+ * Delete a Template.
+ *
+ * @param $template
+ *   Template object.
+ */
+function properties_sql_properties_template_delete($template) {
+  db_delete('properties_template')
+  ->condition('name', $template->name)
+  ->execute();
+
+  db_delete('properties_template_category')
+    ->condition('template_name', $template->name)
+    ->execute();
+}
+
+
+
+/**
+ * Load a template based on the name.
+ *
+ * @param $name
+ *   Machine readable name of the template.
+ */
+function properties_sql_properties_template_load($name) {
+  return reset(properties_sql_properties_template_load_multiple(array($name)));
+}
+
+
+/**
+ * Load multiple templates based on their names.
+ *
+ * @param $names
+ *   Array of machine readable name of the templates.
+ */
+function properties_sql_properties_template_load_multiple($names = array()) {
+  $templates = db_select('properties_template', 'pt')
+    ->fields('pt')
+    ->condition('name', $names)
+    ->addTag('translatable')
+    ->addTag('properties_template_load')
+    ->execute()
+    ->fetchAllAssoc('name');
+
+  foreach ($templates as $template) {
+    $template->categories = array();
+  }
+
+  $query = db_select('properties_template_category', 'ptc')
+    ->fields('ptc')
+    ->condition('ptc.template_name', $names)
+    ->addTag('properties_template_category_load')
+    ->orderBy('ptc.weight');
+  $query->join('properties_category', 'pc', 'ptc.category_name = pc.name');
+  $result = $query
+    ->fields('pc')
+    ->execute();
+  foreach ($result as $category) {
+    $templates[$category->template_name]->categories[$category->name] = $category;
+  }
+  return $templates;
+}
+
+/**
+ * Load a paged amount of templates.
+ *
+ * @param $per_page
+ *   Number of templates per page.
+ */
+function properties_sql_properties_template_load_paging($per_page, array $options = array()) {
+  $query = db_select('properties_template', 'pt')->extend('PagerDefault')
+    ->fields('pt')
+    ->limit($per_page);
+
+  if (isset($options['header'])) {
+    $query = $query
+      ->extend('TableSort')
+      ->orderByHeader($options['header']);
+  }
+  if (!empty($options['search'])) {
+    $query->condition(db_or()
+      ->condition('name', $options['search'] . '%', 'LIKE')
+      ->condition('label', $options['search'] . '%', 'LIKE')
+    );
+  }
+  return $query
+    ->execute()
+    ->fetchAllAssoc('name');
+}

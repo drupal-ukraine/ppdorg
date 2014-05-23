@@ -1,0 +1,104 @@
+<?php
+// $Id: properties_compare.test,v 1.1 2010/12/22 19:55:20 berdir Exp $
+
+/**
+ * @file
+ * Contains tests for the properties_compare.module
+ */
+
+
+/**
+ * Tests for fields integration.
+ */
+class PropertiesCompareTestCase extends PropertiesBaseTestCase {
+  /**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('Properties compare'),
+      'description' => t('Tests for comparing properties'),
+      'group' => t('Properties'),
+    );
+  }
+
+  /**
+   * Implements setUp().
+   */
+  function setUp() {
+    parent::setUp('properties', 'properties_sql', 'properties_compare');
+  }
+
+  /**
+   * Log in with administrative permissions.
+   *
+   * Admin user is created on-demand.
+   */
+  protected function loginAdmin() {
+    if (empty($this->admin)) {
+      $this->admin = $this->drupalCreateUser(array('administer nodes', 'administer content types', 'administer blocks', 'create page content', 'edit any page content', 'administer properties attributes', 'administer properties categories', 'add properties attributes', 'add properties categories', 'compare properties'));
+    }
+    $this->drupalLogin($this->admin);
+  }
+
+  /**
+   * Test comparing to similiar nodes.
+   */
+  function testPropertyFieldCreation() {
+    $this->loginAdmin();
+
+    $this->createProperties();
+    $this->createField();
+
+    // Enable compare list block.
+    $block = array(
+      'regions[bartik]' => 'sidebar_first',
+    );
+    $this->drupalPost('admin/structure/block/manage/properties_compare/compare_list/configure', $block, t('Save block'));
+    $first_node = $this->createEntity();
+    $second_node = $this->createEntity();
+    $third_node = $this->createEntity();
+
+    $this->assertNoText(t('Compare list'));
+
+    // Add them to comparison list.
+    $this->drupalPost('node/' . $first_node->nid, array(), t('Add to compare list'));
+    $this->drupalPost('node/' . $second_node->nid, array(), t('Add to compare list'));
+
+    // Verify compare list.
+    $this->drupalGet('node');
+    $this->assertText(t('Compare list'));
+    $this->assertText($first_node->title, t('First node is listed in compare list.'));
+    $this->assertText($second_node->title, t('Second node is listed in compare list.'));
+    $this->assertNoText($third_node->title, t('Third node is not listed in compare list.'));
+
+    // Submit comparison list form.
+    $this->drupalPost(NULL, array(), t('Compare'));
+
+    // Assert that page and node titles are displayed.
+    $this->assertTitle(t('Comparison') . ' | Drupal');
+
+    // Go through all properties and build a verification string.
+    $patterns = array();
+    $patterns[] = t('Attributes');
+    $patterns[] = $first_node->title;
+    $patterns[] = $second_node->title;
+    $current_category = null;
+    foreach ($first_node->{'field_' . $this->field_name}['und'] as $key => $item) {
+      // Add the label of the category to the pattern if it changed.
+      if (!$current_category || $item['category'] != $current_category->name) {
+        $current_category = properties_category_load($item['category']);
+        $patterns[] = check_plain($current_category->label);
+      }
+      // Add the attribute label to the pattern list.
+      $patterns[] = check_plain($current_category->attributes[$item['attribute']]->label);
+
+      // Add the value for both nodes.
+      $patterns[] = preg_quote(check_plain($item['value']), '/');
+      $patterns[] = preg_quote(check_plain($second_node->{'field_' . $this->field_name}['und'][$key]['value']), '/');
+    }
+
+    $pattern = '/' . implode('.*', $patterns) . '/s';
+    $this->assertPattern($pattern, t('Comparison table content displayed in correct order.'));
+  }
+}

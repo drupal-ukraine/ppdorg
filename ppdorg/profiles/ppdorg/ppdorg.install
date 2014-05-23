@@ -26,7 +26,8 @@ function ppdorg_install() {
       'cache' => -1,
     ),
   );
-  $query = db_insert('block')->fields(array('module', 'delta', 'theme', 'status', 'weight', 'region', 'pages', 'cache'));
+  $fields = array_keys($values[0]);
+  $query = db_insert('block')->fields($fields);
   foreach ($values as $record) {
     $query->values($record);
   }

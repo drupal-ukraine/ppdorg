@@ -1,0 +1,534 @@
+<?php
+// $Id: properties.test,v 1.1 2010/12/22 19:55:20 berdir Exp $
+
+/**
+ * @file
+ * Contains tests for the properties.module
+ */
+
+/**
+ * Base class for properties tests, provides helper methods.
+ */
+class PropertiesBaseTestCase extends DrupalWebTestCase {
+
+  /**
+   * Array with attributes.
+   *
+   * Created by createProperties().
+   *
+   * @var array
+   */
+  protected $attributes = array();
+
+  /**
+   * Array with categories.
+   *
+   * Created by createProperties().
+   *
+   * @var array
+   */
+  protected $categories = array();
+
+  /**
+   * User with administrative permissions.
+   *
+   * @var object
+   */
+  protected $admin;
+
+  /**
+   * User with permissions to create content and add categories.
+   *
+   * @var object
+   */
+  protected $editor;
+
+  /**
+   * Field label created by createField().
+   *
+   * @var string
+   */
+  protected $field_label;
+
+  /**
+   * Field name created by createField().
+   *
+   * @var string
+   */
+  protected $field_name;
+
+  /**
+   * Field prefix created by createField(), can be used in forms.
+   *
+   * @var string
+   */
+  protected $field_prefix;
+
+  /**
+   * Implements setUp().
+   */
+  function setUp() {
+    $args = func_get_args();
+    if (empty($args)) {
+      $args = array('properties', 'properties_sql');
+    }
+    parent::setUp($args);
+    $this->admin = NULL;
+    $this->editor = NULL;
+  }
+
+  /**
+   * Create an attribute through the administration interface, load and return it.
+   *
+   * @param $name
+   *   machine_name of the attribute, a random name is generated when left empty.
+   * @param $label
+   *   Label of the attribute, a random label is generated when left empty.
+   *
+   * @return
+   *   Loaded attribute object.
+   */
+  protected function createAttribute($name = NULL, $label = NULL) {
+    $attribute = array(
+      'name' => empty($name) ? drupal_strtolower($this->randomName(8)) : $name,
+      'label' => empty($label) ? $this->randomName(20) : $label,
+    );
+    $this->drupalPost('admin/config/content/properties/attributes/add', $attribute, t('Save'));
+    $this->assertText(t('Attribute created.'));
+    $attribute_object = properties_attribute_load($attribute['name']);
+    $this->assertEqual($attribute_object->label, $attribute['label']);
+    return $attribute_object;
+  }
+
+  /**
+   * Create a category with attributes through the administration interface, load and return it.
+   *
+   * @param $name
+   *   machine_name of category, a random name is generated when left empty.
+   * @param $label
+   *   Label of the category, a random label is generated when left empty.
+   * @param $attributes
+   *   An array of attributes, that is added to the category.
+   *
+   * @return
+   *   Loaded category object.
+   */
+  protected function createCategory($name = NULL, $label = NULL, $attributes = array()) {
+    $category = array(
+      'name' => empty($name) ? drupal_strtolower($this->randomName(8)) : $name,
+      'label' => empty($label) ? $this->randomName(20) : $label,
+    );
+
+    $this->drupalPost('admin/config/content/properties/categories/add', $category, t('Add another attribute'));
+
+    for ($i = 0; $i < count($attributes); $i++) {
+
+      $newAttribute = array(
+        "attributes[$i][attribute]"  => $attributes[$i]->name,
+      );
+      $this->drupalPost(NULL, $newAttribute, t('Add another attribute'));
+
+    }
+    $this->drupalPost(NULL, NULL, t('Save'));
+
+    $category_object = properties_category_load($category['name']);
+    $this->assertEqual($category_object->label, $category['label']);
+
+    return $category_object;
+  }
+
+  /**
+   * Creates a given number of categories including attributes.
+   *
+   * @param $maxi
+   *   Number of categories to create.
+   */
+  protected function createProperties($maxi = 3, $maxj = 3) {
+        // Create attributes.
+    $this->categories = array();
+    for ($i = 0; $i < $maxi; $i++) {
+      for ($j = 0; $j < $maxj; $j++) {
+        $this->attributes[$i][$j] = $this->createAttribute();
+      }
+      $this->categories[$i] = $this->createCategory(NULL, NULL, $this->attributes[$i]);
+    }
+  }
+
+  /**
+   * Log in with administrative permissions.
+   *
+   * Admin user is created on-demand.
+   */
+  protected function loginAdmin() {
+    if (empty($this->admin)) {
+      $this->admin = $this->drupalCreateUser(array('administer nodes', 'administer content types', 'create page content', 'edit any page content', 'administer properties attributes', 'administer properties categories', 'add properties attributes', 'add properties categories'));
+    }
+    $this->drupalLogin($this->admin);
+  }
+
+  /**
+   * Create a properties field for the given settings page.
+   *
+   * @param $url
+   *   URL to the manage fields form, defaults to the form for the page node
+   *   type.
+   */
+  protected function createField($url = NULL) {
+    // Create a new field.
+    $field = array(
+      'fields[_add_new_field][label]' => $this->field_label = $this->randomName(),
+      'fields[_add_new_field][field_name]' => $this->field_name = drupal_strtolower($this->randomName()),
+      'fields[_add_new_field][type]' => 'properties',
+      'fields[_add_new_field][widget_type]' => 'properties_table',
+    );
+
+    if (empty($url)) {
+      $url = 'admin/structure/types/manage/page/fields';
+    }
+
+    $this->field_prefix = 'field_' . $this->field_name . '[und]';
+
+    $this->drupalPost($url, $field, t('Save'));
+    $this->drupalPost(NULL, array(), t('Save field settings'));
+    $this->drupalPost(NULL, array(), t('Save settings'));
+  }
+
+  /**
+   * Returns the form name of a attribute in a specific category.
+   *
+   * @param $category
+   *   Category object.
+   * @param $attribute
+   *   Attribut object.
+   *
+   * @return
+   *   Name of the form field name.
+   */
+  function getAttributeFormName($category, $attribute, $fieldname = 'value') {
+    return $this->field_prefix . '[listing][' . $category->name . '][properties][' . $attribute->name . '][' . $fieldname . ']';
+  }
+
+  /**
+   * Create a page node with properties attached to it.
+   *
+   * @param $path
+   *   Path the the create form, defaults to node/add/page.
+   * @param $save
+   *   Name
+   */
+  function createEntity($path = 'node/add/page', $save = NULL, $entity = 'node') {
+    // Add first category.
+    $node = array(
+      'title' => $this->randomName(),
+      $this->field_prefix . '[actions][new_category]' => $this->categories[0]->name,
+    );
+
+    $this->drupalPost('node/add/page', $node, t('Add category'));
+
+    // Next category.
+    $category = array(
+      $this->field_prefix . '[actions][new_category]' => $this->categories[1]->name,
+    );
+    $this->drupalPost(NULL, $category, t('Add category'));
+
+    // Last category.
+    $category = array(
+      $this->field_prefix . '[actions][new_category]' => $this->categories[2]->name,
+    );
+    $this->drupalPost(NULL, $category, t('Add category'));
+
+    // Fill in values.
+    $edit = array();
+    foreach ($this->categories as $cid => $category) {
+      foreach ($this->attributes[$cid] as $attribute) {
+        $edit[$this->getAttributeFormName($category, $attribute)] = $this->randomString(20);
+      }
+    }
+
+    if (empty($save)) {
+      $save = t('Save');
+    }
+    $this->drupalPost(NULL, $edit, $save);
+
+    // Get node id and return it.
+    if (preg_match('|node/([0-9]+)|', $this->getUrl(), $match)) {
+      return reset(entity_load($entity, array($match[1])));
+    }
+  }
+}
+
+/**
+ * Tests for fields integration.
+ */
+class PropertiesTestCase extends PropertiesBaseTestCase {
+  /**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('Properties creation'),
+      'description' => t('Tests properties field type.'),
+      'group' => t('Properties'),
+    );
+  }
+
+  /**
+   * Test field creation functionality.
+   */
+  function testPropertyFieldCreation() {
+    $this->loginAdmin();
+
+    $this->createProperties();
+    $this->createField();
+
+    // Create a single, separate attribute.
+    $attribute = $this->createAttribute();
+
+    // Add first category
+    $node = array(
+      'title' => $this->randomName(),
+      $this->field_prefix . '[actions][new_category]' => $this->categories[0]->name,
+    );
+
+    $this->drupalPost('node/add/page', $node, t('Add category'));
+
+    // Next category.
+    $category = array(
+      $this->field_prefix . '[actions][new_category]' => $this->categories[1]->name,
+    );
+    $this->drupalPost(NULL, $category, t('Add category'));
+
+    // Last category.
+    $category = array(
+      $this->field_prefix . '[actions][new_category]' => $this->categories[2]->name,
+    );
+    $this->drupalPost(NULL, $category, t('Add category'));
+
+    // Fill in values.
+    $values = array();
+    $edit = array();
+    foreach ($this->categories as $cid => $category) {
+      foreach ($this->attributes[$cid] as $attribute) {
+        $edit[$this->getAttributeFormName($category, $attribute)] = $values[$attribute->name] = $this->randomString(20);
+      }
+    }
+
+    // Change order of categories category, third category first.
+    $edit[$this->field_prefix . '[listing][' . $this->categories[2]->name . '][_weight]'] = -10;
+
+    // Move an attribute to a different category.
+    $edit[$this->getAttributeFormName($this->categories[0], $this->attributes[0][1], 'category')] = $this->categories[1]->name;
+    $edit[$this->getAttributeFormName($this->categories[0], $this->attributes[0][1], '_weight')] = 4;
+
+    // Change weight of an attribute.
+    $edit[$this->getAttributeFormName($this->categories[0], $this->attributes[0][0], '_weight')] = 2;
+    $edit[$this->getAttributeFormName($this->categories[0], $this->attributes[0][2], '_weight')] = 0;
+
+    $this->drupalPost(NULL, $edit, t('Save'));
+
+    // Make sure that the third category comes before the first.
+    $this->assertPattern('/' . $this->categories[2]->label . '.*' . $this->categories[0]->label . '/s', t('Third category is displayed before first.'));
+
+    // Make sure that the moved attribute is shown in the correct category.
+    // Meaning, after the last attribute in that category.
+    $this->assertPattern('/' . $this->attributes[1][2]->label . '.*' . $this->attributes[0][1]->label . '/s', t('Moved attribute is shown in the correct place.'));
+
+    // Make sure the default order in category 2 is correct.
+    $this->assertPattern('/' . $this->categories[2]->label . '.*' . $this->attributes[2][0]->label . '.*' . $this->attributes[2][1]->label . '.*' . $this->attributes[2][2]->label . '/s', t('Default order in category 2 is correct.'));
+
+    // Make sure the changed order in category 0 is correct.
+    $this->assertPattern('/' . $this->attributes[0][2]->label . '.*' . $this->attributes[0][0]->label . '/s', t('Changed order in category 0 is correct.'));
+
+    // Try editing the content.
+    $this->clickLink('Edit');
+
+    // Add a new attribute.
+    $edit = array(
+      $this->field_prefix . '[actions][attribute_category]' => $this->categories[1]->name,
+      $this->field_prefix . '[actions][new_attribute]' => $attribute->name,
+    );
+    $this->drupalPost(NULL, $edit, t('Add attribute'));
+
+    $edit = array(
+      $this->getAttributeFormName($this->categories[1], $this->attributes[0][1], 'category') => $this->categories[0]->name,
+      $this->getAttributeFormName($this->categories[1], $this->attributes[0][1], '_weight') => 10,
+      $this->getAttributeFormName($this->categories[1], $attribute) => $value = $this->randomName(20),
+      $this->getAttributeFormName($this->categories[1], $attribute, '_weight') => -10,
+    );
+    $this->drupalPost(NULL, $edit, t('Save'));
+
+    // Verify that the attribute was added.
+    $this->assertPattern('/' . $this->categories[1]->label . '.*' . $attribute->label . '.*' . $this->attributes[1][2]->label . '/s', t('Newly added attribute is shown in the correct category.'));
+
+    // Verify that the moved attribute has been moved back.
+    $this->assertPattern('/' . $this->categories[0]->label . '.*' . $this->attributes[0][2]->label . '.*' . $this->attributes[0][0]->label . '.*' . $this->attributes[0][1]->label . '.*' . $this->categories[1]->label . '/s', t('Changed order in category 0 is correct.'));
+  }
+
+  /**
+   * Test autocomplete functionality.
+   */
+  function testAutocomplete() {
+    $this->loginAdmin();
+    $this->createAttribute('aaname', 'ccclabel');
+    $this->createAttribute('abname', 'ccblabel');
+    $this->createAttribute('bcname', 'efglabel');
+
+    $this->drupalGet('properties_autocomplete/attribute/a');
+    $json = drupal_json_decode($this->drupalGetContent());
+    $this->assertEqual(2, count($json));
+    $this->assertEqual($json['aaname'], t('@name (@label)', array('@name' => 'aaname', '@label' => 'ccclabel')));
+    $this->assertEqual($json['abname'], t('@name (@label)', array('@name' => 'abname', '@label' => 'ccblabel')));
+
+    $this->drupalGet('properties_autocomplete/attribute/aa');
+    $json = drupal_json_decode($this->drupalGetContent());
+    $this->assertEqual(1, count($json));
+    $this->assertEqual($json['aaname'], t('@name (@label)', array('@name' => 'aaname', '@label' => 'ccclabel')));
+
+    $this->drupalGet('properties_autocomplete/attribute/cc');
+    $json = drupal_json_decode($this->drupalGetContent());
+    $this->assertEqual(2, count($json));
+    $this->assertEqual($json['aaname'], t('@name (@label)', array('@name' => 'aaname', '@label' => 'ccclabel')));
+    $this->assertEqual($json['abname'], t('@name (@label)', array('@name' => 'abname', '@label' => 'ccblabel')));
+
+    $this->drupalGet('properties_autocomplete/attribute/ef');
+    $json = drupal_json_decode($this->drupalGetContent());
+    $this->assertEqual(1, count($json));
+    $this->assertEqual($json['bcname'], t('@name (@label)', array('@name' => 'bcname', '@label' => 'efglabel')));
+
+    $this->drupalGet('properties_autocomplete/attribute/none');
+    $json = drupal_json_decode($this->drupalGetContent());
+    $this->assertEqual(0, count($json));
+  }
+}
+
+/**
+ * Tests for fields integration.
+ */
+class PropertiesAdministrationTestCase extends PropertiesBaseTestCase {
+  /**
+   * Implementation of getInfo().
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('Properties administration'),
+      'description' => t('Category and Attribute administration tests'),
+      'group' => t('Properties'),
+    );
+  }
+
+  public function testCreating() {
+    $this->loginAdmin();
+
+    // Create 5 properties.
+    $attributes = array();
+    for ($i = 0; $i < 5; $i++) {
+      $attributes[$i] = $this->createAttribute();
+    }
+
+    // Create a category.
+    $category = array(
+      'name' => drupal_strtolower($this->randomName(8)),
+      'label' => $this->randomName(20),
+      'attributes[0][attribute]' => $attributes[3]->name,
+    );
+
+    // Add another attribute.
+    $this->drupalPost('admin/config/content/properties/categories/add', $category, t('Add another attribute'));
+
+    // Assert that label has been inserted.
+    $this->assertText($attributes[3]->label);
+
+    // And another one.
+    $next_attribute = array(
+      'attributes[1][attribute]' => $attributes[1]->name,
+    );
+    $this->drupalPost(NULL, $next_attribute, t('Add another attribute'));
+
+    // Assert that label has been inserted.
+    $this->assertText($attributes[1]->label);
+
+    // Add a new attribute, try to submit.
+    $new_attribute = array(
+      'attributes[2][attribute]' => $name = drupal_strtolower($this->randomName()),
+    );
+    $this->drupalPost(NULL, $new_attribute, t('Save'));
+    $this->assertText(t('Attribute @name does not exist, a label must be provided to create it.', array('@name' => $name)));
+
+    $label = array(
+      'attributes[' . $name . '][label]' => $new_label = $this->randomName(20),
+    );
+    $this->drupalPost(NULL, $label, t('Save'));
+    $this->assertText(t('Category created.'));
+
+    // Verify that new attribute has been created.
+    $this->drupalGet('admin/config/content/properties/attributes');
+    $this->assertText($new_label);
+    $this->assertText($name);
+  }
+
+  /**
+   * Tests for creating and editing a category.
+   */
+  public function testEditCategory() {
+    $this->loginAdmin();
+
+    /// Edit Attributes in Categories
+
+    // Create 8 properties.
+    $attributes = array();
+    for ($i = 0; $i < 8; $i++) {
+      $attributes[$i] = $this->createAttribute();
+    }
+    // Create category with these existing attributes.
+    $category = $this->createCategory(drupal_strtolower($this->randomName(8)), $this->randomName(20), $attributes);
+
+    // Create new attribute.
+    $attribute = $this->createAttribute();
+    $inputfieldname = "attributes[" . $attributes[0]->name . "][attribute]";
+    debug($inputfieldname);
+    $editAttribute = array(
+      $inputfieldname  => $attribute->name,
+    );
+
+    // Replace existing attribute with the new attribute.
+    $this->drupalGet('admin/config/content/properties/categories');
+    $this->AssertText($category->name);
+    $this->clickLink(t('edit'));
+    $this->drupalPost(NULL, $editAttribute, t('Save'));
+
+    // Now check if the attribute was added to that category.
+    $cat = properties_sql_properties_category_load($category->name);
+    $newAttributeInCategory = FALSE;
+    $oldAttributeInCategory = FALSE;
+
+    // As the order isn't given, I walk trough the list of attributes.
+    foreach ($cat->attributes as $attr) {
+      if ($attr->name === $attribute->name) {
+        $newAttributeInCategory = TRUE;
+      }
+      if ($attr->name === $attributes[0]->name) {
+        $oldAttributeInCategory = TRUE;
+      }
+    }
+    $this->AssertText(t('Category updated.'));
+    // The new attribute should be in that category.
+    $this->AssertTrue(isset($cat->attributes[$attribute->name]));
+    // The old shouldn't.
+    $this->AssertFalse(isset($cat->attributes[$attributes[0]->name]));
+
+    // Delete created property again.
+    $this->drupalGet('admin/config/content/properties/categories');
+    $this->AssertText($category->name);
+    $this->clickLink(t('edit'));
+    $inputfieldname = "attributes[" . $attribute->name . "][attribute]";
+
+    $deleteAttribute = array(
+        $inputfieldname  => '',
+    );
+    $this->drupalPost(NULL, $deleteAttribute, t('Save'));
+
+    $cat = properties_sql_properties_category_load($category->name);
+
+    $this->AssertFalse(isset($cat->attributes[$attribute->name]));
+  }
+}

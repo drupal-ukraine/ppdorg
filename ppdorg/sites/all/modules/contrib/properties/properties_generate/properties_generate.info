@@ -1,0 +1,16 @@
+; $Id: properties_generate.info,v 1.1 2010/12/22 19:55:20 berdir Exp $
+name = Dynamic Properties Generation
+description = Generate a random amount of categories and attributes.
+core = 7.x
+files[] = properties_generate.module
+dependencies[] = properties
+dependencies[] = properties_sql
+dependencies[] = devel_generate
+
+
+; Information added by drupal.org packaging script on 2010-12-23
+version = "7.x-1.0-alpha1"
+core = "7.x"
+project = "properties"
+datestamp = "1293121027"
+
