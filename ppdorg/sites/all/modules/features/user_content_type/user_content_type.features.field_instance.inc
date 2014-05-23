@@ -62,7 +62,7 @@ function user_content_type_field_default_field_instances() {
         'summary_rows' => 5,
       ),
       'type' => 'text_textarea_with_summary',
-      'weight' => -4,
+      'weight' => 2,
     ),
   );
 
@@ -110,7 +110,47 @@ function user_content_type_field_default_field_instances() {
       'module' => 'properties',
       'settings' => array(),
       'type' => 'properties_table',
-      'weight' => -3,
+      'weight' => 3,
+    ),
+  );
+
+  // Exported field_instance: 'node-user-field_drupal_profile'
+  $field_instances['node-user-field_drupal_profile'] = array(
+    'bundle' => 'user',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => 'Example: https://drupal.org/user/257311',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'text',
+        'settings' => array(),
+        'type' => 'text_default',
+        'weight' => 4,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_drupal_profile',
+    'label' => 'Drupal.org profile',
+    'required' => 1,
+    'settings' => array(
+      'text_processing' => 0,
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'text',
+      'settings' => array(
+        'size' => 60,
+      ),
+      'type' => 'text_textfield',
+      'weight' => 1,
     ),
   );
 
@@ -162,7 +202,7 @@ function user_content_type_field_default_field_instances() {
         'size' => 60,
       ),
       'type' => 'taxonomy_autocomplete',
-      'weight' => -2,
+      'weight' => 4,
     ),
   );
 
@@ -214,7 +254,7 @@ function user_content_type_field_default_field_instances() {
         'size' => 60,
       ),
       'type' => 'taxonomy_autocomplete',
-      'weight' => -1,
+      'weight' => 5,
     ),
   );
 
@@ -222,6 +262,8 @@ function user_content_type_field_default_field_instances() {
   // Included for use with string extractors like potx.
   t('Body');
   t('Commits');
+  t('Drupal.org profile');
+  t('Example: https://drupal.org/user/257311');
   t('Office');
   t('Position');
 
