@@ -17,3 +17,4 @@ dependencies[] = querypath
 ; Custom modules
 
 ; Features
+dependencies[] = ppdorg_user_content
