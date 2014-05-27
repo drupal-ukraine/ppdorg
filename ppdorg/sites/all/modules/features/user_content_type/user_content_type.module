@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the User content type feature.
+ */
+
+include_once 'user_content_type.features.inc';

@@ -39,4 +39,28 @@ function ppdorg_install() {
   // Enable default permissions for system roles.
   user_role_grant_permissions(DRUPAL_ANONYMOUS_RID, array('access content'));
   user_role_grant_permissions(DRUPAL_AUTHENTICATED_RID, array('access content'));
+
+  // Add properties for Commits field.
+  properties_attribute_save((object) array(
+    'label' => 'Commits count',
+    'name' => 'commits_count'
+  ));
+  properties_attribute_save((object) array(
+    'label' => 'Snapshot time',
+    'name' => 'snapshot_time'
+  ));
+
+  $commits_count = properties_attribute_load('commits_count');
+  $commits_count->weight = 0;
+  $snapshot_time = properties_attribute_load('snapshot_time');
+  $snapshot_time->weight = 1;
+
+  properties_category_save((object) array(
+    'label' => 'Commits',
+    'name' => 'commits',
+    'attributes' => array(
+      'commits_count' => $commits_count,
+      'snapshot_time' => $snapshot_time,
+    ),
+  ));
 }

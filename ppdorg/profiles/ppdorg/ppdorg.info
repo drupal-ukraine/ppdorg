@@ -16,5 +16,5 @@ dependencies[] = properties
 ; Custom modules
 
 ; Features
-
+dependencies[] = user_content_type
 
