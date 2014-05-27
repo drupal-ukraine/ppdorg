@@ -1,0 +1,91 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function properties_generate_menu() {
+  $items['admin/config/development/generate/properties'] = array(
+    'title' => 'Generate properties',
+    'description' => 'Generate a given number of categories and attributes',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_generate_form'),
+    'access arguments' => array('administer properties categories'),
+  );
+
+  return $items;
+}
+
+/**
+ * Form builder function, display form to generate properties.
+ */
+function properties_generate_form() {
+  $form['num_categories'] = array(
+    '#type' => 'textfield',
+    '#title' => t('How many categories would you like to generate?'),
+    '#default_value' => 20,
+    '#size' => 10,
+  );
+  $form['num_attributes'] = array(
+    '#type' => 'textfield',
+    '#title' => t('How many attributes per category would you like to generate?'),
+    '#default_value' => 10,
+    '#size' => 10,
+  );
+  $form['kill'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Delete all existing properties before creating new ones.'),
+    '#default_value' => FALSE,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Generate'),
+  );
+  return $form;
+}
+
+/**
+ * Submit callback for generating properties.
+ */
+function properties_generate_form_submit($form, &$form_state) {
+  module_load_include('inc', 'devel_generate');
+  properties_generate_generate($form_state['values']['num_categories'], $form_state['values']['num_attributes'], $form_state['values']['kill']);
+  drupal_set_message(t('Properties generated.'));
+}
+
+/**
+ * Generate properties.
+ *
+ * @param $num_categories
+ *   Amount of categories to create.
+ * @param $num_attributes
+ *   Amount of attributes per category to create.
+ * @param $kill
+ *   TRUE if existing properties should be deleted.
+ */
+function properties_generate_generate($num_categories = 20, $num_attributes = 10, $kill = FALSE) {
+  if ($kill) {
+    foreach (array('attribute', 'category', 'category_attribute') as $table) {
+      db_truncate('properties_' . $table)
+        ->execute();
+    }
+  }
+
+  for ($i = 0; $i < $num_categories; $i++) {
+    $category = (object)array(
+      'name' => drupal_strtolower(devel_generate_word(6)),
+      'label' => devel_generate_word(10),
+      'attributes' => array(),
+    );
+    $weight = 0;
+    for ($k = 0; $k < $num_attributes; $k++) {
+      $category->attributes[] = (object)array(
+        'name' => $category->name . '_' . drupal_strtolower(devel_generate_word(6)),
+        'label' => devel_generate_word(10),
+        'weight' => $weight++,
+        'new' => TRUE,
+      );
+    }
+    properties_category_save($category);
+  }
+}

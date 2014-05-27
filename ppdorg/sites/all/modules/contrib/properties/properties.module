@@ -1,0 +1,958 @@
+<?php
+
+// $Id: properties.module,v 1.1 2010/12/22 19:55:20 berdir Exp $
+
+/**
+ * Implements hook_permission().
+ */
+function properties_permission() {
+  return array(
+    'administer properties attributes' => array(
+      'title' => t('Administer attributes'),
+      'description' => t('Allows to create new, edit existing and delete attributes.'),
+    ),
+    'administer properties categories' => array(
+      'title' => t('Administer categories'),
+      'description' => t('Allows to create new, edit existing and delete categories.'),
+    ),
+    'add properties categories' => array(
+      'title' => t('Add categories to content'),
+      'description' => t('Allows to add existing categories to content.'),
+    ),
+    'add properties attributes' => array(
+      'title' => t('Add attributes to content'),
+      'description' => t('Allows to add existing attributes to content or change existing ones.'),
+    )
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function properties_menu() {
+  $items['admin/config/content/properties'] = array(
+    'title' => 'Properties',
+    'description' => 'Administer categories and attributes',
+    'access callback' => 'properties_admin_access',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_admin_attributes_list'),
+    'file' => 'properties.admin.inc',
+  );
+
+  $items['admin/config/content/properties/attributes'] = array(
+    'title' => 'Attributes',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_admin_attributes_list'),
+    'file' => 'properties.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('attributes'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/config/content/properties/attributes/list'] = array(
+    'title' => 'List',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -20,
+  );
+
+  $items['admin/config/content/properties/attributes/add'] = array(
+    'title' => 'Add attribute',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_admin_attributes_form'),
+    'file' => 'properties.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('attributes'),
+    'type' => MENU_LOCAL_ACTION,
+  );
+
+  $items['admin/config/content/properties/attributes/edit/%properties_attribute'] = array(
+    'title' => 'Edit attribute',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_admin_attributes_form', 6),
+    'file' => 'properties.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('attributes'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items['admin/config/content/properties/attributes/delete/%properties_attribute'] = array(
+    'title' => 'Delete attribute',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_admin_attributes_delete', 6),
+    'file' => 'properties.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('attributes'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['admin/config/content/properties/categories'] = array(
+    'title' => 'Categories',
+    'page callback' => 'properties_admin_categories_list',
+    'file' => 'properties.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('categories'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 10,
+  );
+
+  $items['admin/config/content/properties/categories/list'] = array(
+    'title' => 'List',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -20,
+  );
+
+  $items['admin/config/content/properties/categories/add'] = array(
+    'title' => 'Add category',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_admin_categories_form'),
+    'file' => 'properties.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('attributes'),
+    'type' => MENU_LOCAL_ACTION,
+  );
+
+  $items['admin/config/content/properties/categories/edit/%properties_category'] = array(
+    'title' => 'Edit category',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_admin_categories_form', 6),
+    'file' => 'properties.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('categories'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items['admin/config/content/properties/categories/delete/%properties_category'] = array(
+    'title' => 'Delete category',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('properties_admin_categories_delete', 6),
+    'file' => 'properties.admin.inc',
+    'access callback' => 'properties_admin_access',
+    'access arguments' => array('categories'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['properties_autocomplete/%'] = array(
+    'title' => 'Properties autocomplete',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'properties_autocomplete_js',
+    'page arguments' => array(1, 2),
+    'access callback' => TRUE,
+  );
+
+  return $items;
+}
+
+/**
+ * Page callback for autocomplete suggestions.
+ */
+function properties_autocomplete_js($type, $string = NULL) {
+  $function = 'properties_' . $type . '_load_paging';
+  if (!function_exists($function)) {
+    return;
+  }
+  $suggestions = $function(10, array('search' => $string));
+
+  $json_suggestions = array();
+  foreach ($suggestions as $suggestion) {
+    $json_suggestions[$suggestion->name] = t('@name (@label)', array('@name' => $suggestion->name, '@label' => $suggestion->label));
+  }
+  drupal_json_output((object) $json_suggestions);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function properties_theme() {
+  return array(
+    'properties_admin_categories_attributes_form' => array(
+      'render element' => 'element',
+      'file' => 'properties.admin.inc',
+    ),
+    'properties_properties_form' => array(
+      'render element' => 'element',
+      'template' => 'properties-properties-form',
+    ),
+  );
+}
+
+/**
+ * Check access to an administration page.
+ *
+ * @param $type
+ *   Either categories or attributes.
+ *
+ * @return
+ *   TRUE if access is allowed.
+ */
+function properties_admin_access($type = NULL) {
+  if (empty($type)) {
+    return user_access('administer properties attributes') || user_access('administer properties categories');
+  }
+  else {
+    return user_access('administer properties ' . $type);
+  }
+}
+
+/**
+ * Implements hook_field_info().
+ */
+function properties_field_info() {
+  return array(
+    'properties' => array(
+      'label' => t('Dynamic Properties'),
+      'description' => t('This field stores a dynamic amount of properties in the database.'),
+      'settings' => array(),
+      'instance_settings' => array(),
+      'default_widget' => 'properties_table',
+      'default_formatter' => 'properties_formatter_list',
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_schema().
+ */
+function properties_field_schema($field) {
+  $columns = array(
+    'attribute' => array(
+      'type' => 'varchar',
+      'length' => 255,
+      'not null' => TRUE,
+    ),
+    'value' => array(
+      'type' => 'varchar',
+      'length' => 255,
+      'not null' => TRUE,
+    ),
+    'category' => array(
+      'type' => 'varchar',
+      'length' => 255,
+      'not null' => TRUE,
+    ),
+  );
+
+  return array(
+    'columns' => $columns,
+    'indexes' => array(
+      'attribute' => array('attribute'),
+      'category' => array('category'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_presave().
+ *
+ * Converts single item array in key 0 into multiple items, which are stored
+ * separately.
+ */
+function properties_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  if (!empty($items[0])) {
+    $categories = $items[0];
+    $items = array();
+
+    // First step, move items into correct category. Necessary to be able to sort
+    // them withing their category.
+    foreach ($categories as $cname => $category) {
+      foreach ($category['properties'] as $pname => $property) {
+        if ($property['category'] != $cname) {
+          // Add to new category.
+          $categories[$property['category']]['properties'][$property['attribute']] = $property;
+          // Remove from current category.
+          unset($categories[$cname]['properties'][$property['attribute']]);
+        }
+      }
+    }
+
+    // Next step, order categories and attributes.
+    uasort($categories, '_field_sort_items_helper');
+    foreach ($categories as $category) {
+      if (empty($category['properties'])) {
+        continue;
+      }
+      uasort($category['properties'], '_field_sort_items_helper');
+      foreach ($category['properties'] as $property) {
+        // If the attribute name was deleted, attribute is empty. Ignore these.
+        if (empty($property['attribute'])) {
+          continue;;
+        }
+        // Add them in the sorted order to the items array.
+        $items[] = array(
+          'attribute' => $property['attribute'],
+          'value' => $property['value'],
+          'category' => $property['category'],
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_field_validate().
+ */
+function properties_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+
+}
+
+/**
+ * Implements hook_field_is_empty().
+ */
+function properties_field_is_empty($item, $field) {
+  return !is_array($item) || !is_array(reset($item));
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function properties_field_formatter_info() {
+  return array(
+    'properties_formatter_list' => array(
+      'label' => t('Definition list'),
+      'field types' => array('properties'),
+    ),
+    'properties_formatter_table' => array(
+      'label' => t('Table'),
+      'field types' => array('properties'),
+    ),
+  );
+}
+
+
+
+/**
+ * Implements hook_field_widget_info().
+ */
+function properties_field_widget_info() {
+  return array(
+    'properties_table' => array(
+      'label' => t('Properties table'),
+      'field types' => array('properties'),
+      'settings' => array(),
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_CUSTOM,
+        'default value' => FIELD_BEHAVIOR_NONE,
+      ),
+    ),
+  );
+}
+
+/**
+ * Returns an empty attribute object.
+ */
+function properties_empty_attribute() {
+  return (object) array(
+    'label' => '',
+    'name' => '',
+  );
+}
+
+/**
+ * Implements hook_field_widet_form().
+ */
+function properties_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $elements = array();
+  $field_name = $field['field_name'];
+  $values = isset($form_state['values'][$field_name][$langcode]['listing']) ? $form_state['values'][$field_name][$langcode]['listing'] : array();
+
+  drupal_add_css(drupal_get_path('module', 'properties') . '/properties.css');
+  drupal_add_js(drupal_get_path('module', 'properties') . '/properties.js');
+
+  $categories = &$form_state[$field_name]['categories'];
+  if (!isset($form_state[$field_name]['categories'])) {
+    $categories = array();
+    // Set up initial content.
+    foreach ($items as $item) {
+      // First, load the category if necessary.
+      if (empty($categories[$item['category']])) {
+        $category = properties_category_load($item['category']);
+        if (!empty($category)) {
+          $categories[$category->name] = array(
+            '_weight' => count($form_state[$field_name]['categories']),
+            'category' => $category,
+            'properties' => array(),
+          );
+        }
+        else {
+          // If the category was deleted, ignore it and everything within it.
+          continue;
+        }
+      }
+      $attribute = properties_attribute_load($item['attribute']);
+      if (!empty($attribute)) {
+        $form_state[$field_name]['categories'][$item['category']]['properties'][$attribute->name] = array(
+          'attribute' => $attribute->name,
+          'category' => $item['category'],
+          'value' => $item['value'],
+          '_weight' => count($form_state[$field_name]['categories'][$item['category']]['properties']),
+        );
+      }
+    }
+  }
+
+  $category_list = array();
+  foreach ($categories as $category_name => $item) {
+    $category_list[$item['category']->name] = $item['category']->label;
+
+    // Update weight from values.
+    if (isset($values[$category_name])) {
+      $item['_weight'] = $values[$category_name]['_weight'];
+    }
+
+    // Move attributes to new category.
+    foreach ($item['properties'] as $delta => $property) {
+      if (isset($values[$category_name]['properties'][$property['attribute']])) {
+        $property['_weight'] = $values[$category_name]['properties'][$property['attribute']]['_weight'];
+        $property['category'] = $values[$category_name]['properties'][$property['attribute']]['category'];
+      }
+
+      if ($property['category'] != $category_name) {
+        $categories[$property['category']]['properties'][$property['attribute']] = $property;
+        unset($categories[$category_name]['properties'][$property['attribute']]);
+      }
+    }
+    usort($item['properties'], '_field_sort_items_helper');
+  }
+  uasort($categories, '_field_sort_items_helper');
+
+  $id = 'properties-' . drupal_html_id($field_name) . '-wrapper';
+
+  $elements['listing'] = array();
+  $tabindex = 1;
+  foreach ($categories as $category_name => $category) {
+    $elements['listing'][$category_name]['#label'] = $category['category']->label;
+    // Only used to trick tabledrag.js.
+    $elements['listing'][$category_name]['category'] = array(
+      '#type' => 'hidden',
+      '#value' => '',
+    );
+
+    $elements['listing'][$category_name]['name'] = array(
+      '#type' => 'hidden',
+      '#value' => $category['category']->name,
+    );
+
+    $elements['listing'][$category_name]['_weight'] = array(
+      '#type' => 'weight',
+      '#title' => t('Weight for category @category', array('@category' => $category['category']->label)),
+      '#title_display' => 'invisible',
+      '#default_value' => $category['_weight'],
+      '#access' => user_access('add properties categories'),
+      '#weight' => 100,
+    );
+
+    $elements['listing'][$category_name]['delete'] = array(
+      '#type' => 'submit',
+      '#value' => t('Delete'),
+      '#submit' => array('properties_widget_remove_category'),
+      '#limit_validation_errors' => array(array($field_name, $langcode)),
+      '#access' => user_access('add properties categories'),
+      '#name' => $category_name,
+      '#ajax' => array(
+        'callback' => 'properties_widget_update_js',
+        'wrapper' => $id,
+        'effect' => 'fade',
+      ),
+    );
+
+    foreach ($category['properties'] as $delta => $property) {
+      $element = array();
+      $element['category'] = array(
+        '#type' => user_access('add properties attributes') ? 'select' : 'hidden',
+        '#default_value' => $property['category'],
+        '#options' => $category_list,
+      );
+      $element['attribute'] = array(
+        '#type' => 'textfield',
+        '#default_value' => $property['attribute'],
+        '#autocomplete_path' => 'properties_autocomplete/attribute',
+        '#maxlength' => 255,
+        '#size' => 32,
+        '#access' => user_access('add properties attributes'),
+        '#ajax' => array(
+          'callback' => 'properties_admin_update_label_js',
+          'wrapper' => 'attributes-wrapper',
+          'effect' => 'fade',
+        ),
+      );
+      $element['label'] = array(
+        '#markup' => !empty($property['attribute']) ? check_plain(properties_attribute_load($property['attribute'])->label) : '',
+      );
+
+      $element['value'] = array(
+        '#type' => 'textfield',
+        '#default_value' =>  $property['value'],
+        '#maxlength' => 255,
+        '#size' => 32,
+        '#attributes' => array(
+          'tabindex' => $tabindex,
+          'class' => array('properties-value'),
+        ),
+      );
+
+      $element['_weight'] = array(
+        '#type' => 'weight',
+        '#title' => t('Weight for property @property', array('@property' => $element['label']['#markup'])),
+        '#title_display' => 'invisible',
+        '#default_value' => $property['_weight'],
+        '#weight' => 100,
+        '#access' => user_access('add properties attributes'),
+      );
+
+      $element['delete'] = array(
+        '#type' => 'submit',
+        '#value' => t('Delete'),
+        '#submit' => array('properties_widget_remove_attribute'),
+        '#access' => user_access('add properties attributes'),
+        '#name' => $property['attribute'],
+        '#limit_validation_errors' => array(array($field_name, $langcode)),
+        '#ajax' => array(
+          'callback' => 'properties_widget_update_js',
+          'wrapper' => $id,
+          'effect' => 'fade',
+        ),
+      );
+
+      $elements['listing'][$category_name]['properties'][$property['attribute']] = $element;
+      $tabindex++;
+    }
+  }
+
+  $elements += array(
+    '#properties_table_id' => $id,
+    '#type' => 'fieldset',
+    '#theme' => 'properties_properties_form',
+    '#title' => t('Properties'),
+    '#description' => t('Add properties to this content. Start by adding categories to it.'),
+    '#prefix' => '<div id="' . $id . '">',
+    '#suffix' => '</div>',
+    '#max_delta' => $delta,
+    // Container for action form elements, might be empty.
+    'actions' => array(),
+  );
+
+  if (user_access('add properties categories')) {
+    $elements['actions']['new_category'] = array(
+      '#type' => 'textfield',
+      '#default_value' => '',
+      '#autocomplete_path' => 'properties_autocomplete/category',
+      '#maxlength' => 255,
+      '#size' => 32,
+    );
+    $elements['actions']['add_category'] = array(
+      '#type' => 'submit',
+      '#value' => t('Add category'),
+      '#limit_validation_errors' => array(array($field_name, $langcode)),
+      '#submit' => array('properties_widget_add_category_submit'),
+      '#ajax' => array(
+        'callback' => 'properties_widget_update_js',
+        'wrapper' => $id,
+        'effect' => 'fade',
+      ),
+    );
+  }
+
+  if (!empty($category_list) && user_access('add properties attributes')) {
+    $elements['actions']['attribute_category'] = array(
+      '#type' => 'select',
+      '#options' => $category_list,
+    );
+
+    $elements['actions']['new_attribute'] = array(
+      '#type' => 'textfield',
+      '#default_value' => '',
+      '#autocomplete_path' => 'properties_autocomplete/attribute',
+      '#maxlength' => 255,
+      '#size' => 32,
+    );
+    $elements['actions']['add_attribute'] = array(
+      '#type' => 'submit',
+      '#value' => t('Add attribute'),
+      '#limit_validation_errors' => array(array($field_name, $langcode)),
+      '#submit' => array('properties_widget_add_attribute_submit'),
+      '#ajax' => array(
+        'callback' => 'properties_widget_update_js',
+        'wrapper' => $id,
+        'effect' => 'fade',
+      ),
+    );
+  }
+  return $elements;
+}
+
+/**
+ * Submit callback to add a category.
+ */
+function properties_widget_add_category_submit($form, &$form_state) {
+  $field_name = $form_state['triggering_element']['#parents'][0];
+  $langcode = $form[$field_name]['#language'];
+  $values = $form_state['values'][$field_name][$langcode]['actions'];
+
+  if (!isset($form_state[$field_name]['categories'][$values['new_category']])) {
+    if (!properties_widget_add_category($values['new_category'], $form_state, $field_name, $langcode)) {
+      drupal_set_message(t('Category empty or invalid.'), 'error');
+    }
+  }
+  $form_state['rebuild'] = TRUE;
+}
+
+/**
+ * Add a category to the widget form.
+ *
+ * @param $category_name
+ *   Machine name of the category or category to add.
+ * @param $form_state
+ *   Form state.
+ * @param $field_name
+ *   Name of the field.
+ * @param $langcode
+ *   Language code.
+ */
+function properties_widget_add_category($category, &$form_state, $field_name, $langcode) {
+  if (is_string($category)) {
+    $category = properties_category_load($category);
+  }
+  if (!empty($category)) {
+    $form_state[$field_name]['categories'][$category->name] = array(
+      '_weight' => count($form_state[$field_name]['categories']),
+      'category' => $category,
+      'properties' => array(),
+    );
+    foreach ($category->attributes as $property) {
+      $form_state[$field_name]['categories'][$category->name]['properties'][$property->name] = array(
+        'attribute' => $property->name,
+        'category' => $category->name,
+        'value' => '',
+        '_weight' => count($form_state[$field_name]['categories'][$category->name]['properties']),
+      );
+    }
+    // Clear the new category form field.
+    unset($form_state['input'][$field_name][$langcode]['new_category']);
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Submit callback to add an attribute.
+ */
+function properties_widget_add_attribute_submit($form, &$form_state) {
+  $field_name = $form_state['triggering_element']['#parents'][0];
+  $langcode = $form[$field_name]['#language'];
+  $values = $form_state['values'][$field_name][$langcode]['actions'];
+
+  $attribute = properties_attribute_load($values['new_attribute']);
+  if (!empty($attribute)) {
+    $form_state[$field_name]['categories'][$values['attribute_category']]['properties'][$attribute->name] = array(
+      'attribute' => $attribute->name,
+      'category' => $values['attribute_category'],
+      'value' => '',
+      '_weight' => count($form_state[$field_name]['categories'][$values['attribute_category']]['properties']),
+    );
+    // Clear the new category form field.
+    unset($form_state['input'][$field_name][$langcode]['new_attribute']);
+  }
+  else {
+    drupal_set_message(t('Attribute empty or invalid.'), 'error');
+  }
+  $form_state['rebuild'] = TRUE;
+}
+
+/**
+ * Submit callback to remove a single attribute.
+ */
+function properties_widget_remove_attribute($form, &$form_state) {
+  $field_name = $form_state['triggering_element']['#parents'][0];
+  $langcode = $form[$field_name]['#language'];
+  $values = $form_state['values'][$field_name][$langcode];
+
+  // @todo: Verify that this always works.
+  $category_name = $form_state['triggering_element']['#parents'][3];
+  $attribute_name = $form_state['triggering_element']['#parents'][5];
+
+  unset($form_state[$field_name]['categories'][$category_name]['properties'][$attribute_name]);
+
+  $form_state['rebuild'] = TRUE;
+}
+
+
+/**
+ * Submit callback to remove a category.
+ */
+function properties_widget_remove_category($form, &$form_state) {
+  $field_name = $form_state['triggering_element']['#parents'][0];
+  $langcode = $form[$field_name]['#language'];
+  $values = $form_state['values'][$field_name][$langcode];
+
+  // @todo: Verify that this always works.
+  $category_name = $form_state['triggering_element']['#parents'][3];
+
+  unset($form_state[$field_name]['categories'][$category_name]);
+
+  $form_state['rebuild'] = TRUE;
+}
+
+/**
+ * AJAX callback that returns the properties widget.
+ */
+function properties_widget_update_js($form, $form_state) {
+  $field_name = $form_state['triggering_element']['#parents'][0];
+  return $form[$field_name];
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function properties_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  $items_by_category = array();
+  foreach ($items as $item) {
+    if (!isset($items_by_category[$item['category']])) {
+      $items_by_category[$item['category']] = array();
+    }
+    $items_by_category[$item['category']][] = $item;
+  }
+
+  $categories = array();
+  if (!empty($items_by_category)) {
+    $categories = properties_category_load_multiple(array_keys($items_by_category));
+  }
+
+  switch ($display['type']) {
+    case 'properties_formatter_list':
+      $element[0]['#prefix'] = '<div class="profile">';
+      $element[0]['#suffix'] = '</div>';
+      foreach ($items_by_category as $category => $items_in_category) {
+        $element[0][] = array(
+          '#type' => 'user_profile_category',
+          '#title' => check_plain($categories[$category]->label),
+        );
+
+        foreach ($items_in_category as $item) {
+          if (isset($categories[$category]->attributes[$item['attribute']])) {
+            $label = $categories[$category]->attributes[$item['attribute']]->label;
+          }
+          elseif (!empty($item['attribute'])) {
+            $label = properties_attribute_load($item['attribute'])->label;
+          }
+          else {
+            continue;
+          }
+          $element[0][] = array(
+            '#type' => 'user_profile_item',
+            '#title' => $label,
+            '#markup' => check_plain($item['value']),
+          );
+        }
+      }
+      break;
+
+    case 'properties_formatter_table':
+      $rows = array();
+      foreach ($items_by_category as $category => $items_in_category) {
+        $rows[] = array(
+          array(
+            'data' => check_plain($categories[$category]->label),
+            'colspan' => 2,
+            'header' => TRUE,
+          ),
+        );
+        foreach ($items_in_category as $item) {
+          if (isset($categories[$category]->attributes[$item['attribute']])) {
+            $label = $categories[$category]->attributes[$item['attribute']]->label;
+          }
+          else {
+            $label = properties_attribute_load($item['attribute'])->label;
+          }
+          $rows[] = array(check_plain($label), check_plain($item['value']));
+        }
+      }
+      $element[0]['#markup'] = theme('table', array('rows' => $rows));
+      break;
+  }
+
+  return $element;
+}
+
+/**
+ * Calls an API function.
+ *
+ * Additional arguments can be passed to the function, these will be forwarded
+ * to the API implementation.
+ *
+ * @param $type
+ *   API type, e.g. attribute or category.
+ * @param $action
+ *   Name of the API function, eg load, save, delete.
+ */
+function _properties_get_call($type, $action) {
+  return variable_get('properties_api', 'properties_sql') . '_properties_' . $type . '_' . $action;
+}
+
+/**
+ * Save an attribute object.
+ *
+ * @param $attribute
+ *   Attribute object.
+ */
+function properties_attribute_save($attribute) {
+  $function_name = _properties_get_call('attribute', 'save');
+  return $function_name($attribute);
+}
+
+/**
+ * Delete an attribute.
+ *
+ * @param $attribute
+ *   Attribute object.
+ */
+function properties_attribute_delete($attribute) {
+  $function_name = _properties_get_call('attribute', 'delete');
+  return $function_name($attribute);
+}
+
+/**
+ * Load an attribute based on the name.
+ *
+ * @param $name
+ *   Machine readable name of the attribute.
+ */
+function properties_attribute_load($name) {
+  if (empty($name)) {
+    return FALSE;
+  }
+  $function_name = _properties_get_call('attribute', 'load');
+  return $function_name($name);
+}
+
+/**
+ * Load multiple attributes based on their names.
+ *
+ * @param $names
+ *   Array of machine readable name of the attributes.
+ */
+function properties_attribute_load_multiple($names = array()) {
+  $function_name = _properties_get_call('attribute', 'load_multiple');
+  return $function_name($names);
+}
+
+/**
+ * Load a paged amount of attributes.
+ *
+ * @param $per_page
+ *   Number of attributes per page.
+ */
+function properties_attribute_load_paging($per_page, array $options = array()) {
+  $function_name = _properties_get_call('attribute', 'load_paging');
+  return $function_name($per_page, $options);
+}
+
+/**
+ * Save an category object.
+ *
+ * @param $category
+ *   Category object.
+ */
+function properties_category_save($category) {
+  foreach ($category->attributes as $delta => $attribute) {
+    // New attribute, save it first.
+    if (!empty($attribute->new)) {
+      properties_attribute_save($attribute);
+    }
+    // Empty attribute, remove from array.
+    if (empty($attribute->name)) {
+      unset($category->attributes[$delta]);
+    }
+  }
+  $function_name = _properties_get_call('category', 'save');
+  return $function_name($category);
+}
+
+/**
+ * Delete an category.
+ *
+ * @param $category
+ *   Category object.
+ */
+function properties_category_delete($category) {
+  $function_name = _properties_get_call('category', 'delete');
+  return $function_name($category);
+}
+
+/**
+ * Load an category based on the name.
+ *
+ * @param $name
+ *   Machine readable name of the category.
+ */
+function properties_category_load($name) {
+  if (empty($name)) {
+    return FALSE;
+  }
+  $function_name = _properties_get_call('category', 'load');
+  return $function_name($name);
+}
+
+/**
+ * Load multiple categories based on their names.
+ *
+ * @param $names
+ *   Array of machine readable name of the categories.
+ */
+function properties_category_load_multiple($names = array()) {
+  $function_name = _properties_get_call('category', 'load_multiple');
+  return $function_name($names);
+}
+
+/**
+ * Load a paged amount of categories.
+ * @param $per_page
+ *   Number of categories per page.
+ */
+function properties_category_load_paging($per_page, array $options = array()) {
+  $function_name = _properties_get_call('category', 'load_paging');
+  return $function_name($per_page, $options);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function properties_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
+  if ($form['#field']['type'] == 'properties') {
+    // Hide the cardinality setting on the field settings for properties fields.
+    $form['field']['cardinality']['#default_value'] = FIELD_CARDINALITY_UNLIMITED;
+    $form['field']['#access'] = FALSE;
+  }
+}
+
+/**
+ * Extracts properties fields from entity.
+ */
+function properties_extract_fields($entity_type, $entity) {
+  $properties_fields = array();
+    // Load fields attached to the entity.
+  $fields = field_info_instances($entity_type, field_extract_bundle($entity_type, $entity));
+
+  // Get the display language for the entity.
+  $languages = field_language($entity_type, $entity);
+
+  // Loop over fields.
+  foreach ($fields as $field_name => $field) {
+    $field_info = field_info_field_by_id($field['field_id']);
+
+    // Only handle properties fields.
+    if ($field_info['type'] == 'properties') {
+      // Load content for the configured language.
+      $field_all_languages = $entity->$field_name;
+      // Field is empty.
+      if (empty($field_all_languages) || !isset($field_all_languages[$languages[$field_name]])) {
+        continue;
+      }
+      $properties_fields[$field_name] = $field_all_languages[$languages[$field_name]];
+    }
+  }
+  return $properties_fields;
+}

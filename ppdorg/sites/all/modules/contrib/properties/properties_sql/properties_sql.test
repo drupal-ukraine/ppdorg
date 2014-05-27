@@ -1,0 +1,7 @@
+<?php
+// $Id: properties_sql.test,v 1.1 2010/12/22 19:55:20 berdir Exp $
+
+/**
+ * This module is tested with the tests from the properties module.
+ */
+
