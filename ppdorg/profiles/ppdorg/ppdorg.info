@@ -3,13 +3,17 @@ description = Start with modules enabled.
 version = 1.0
 core = 7.x
 dependencies[] = block
+dependencies[] = field_ui
+dependencies[] = taxonomy
+dependencies[] = list
 dependencies[] = dblog
 
 ; Contrib modules
 dependencies[] = admin_menu_toolbar
+dependencies[] = features
+dependencies[] = properties
+dependencies[] = querypath
 
 ; Custom modules
 
 ; Features
-
-
