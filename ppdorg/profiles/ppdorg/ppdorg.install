@@ -94,7 +94,6 @@ function ppdorg_install() {
       'name' => 'theme_project'
     ));
 
-
   $book_listing = properties_attribute_load('book_listing');
   $book_listing->weight = 0;
   $book_page = properties_attribute_load('book_page');
