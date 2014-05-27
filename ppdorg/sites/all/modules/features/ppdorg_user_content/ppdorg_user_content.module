@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the PPDORG user content feature.
+ */
+
+include_once 'ppdorg_user_content.features.inc';

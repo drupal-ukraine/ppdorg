@@ -1,0 +1,17 @@
+name = PPDORG user content
+description = User content type with properties field
+core = 7.x
+package = PPDORG
+version = 7.x-1.0
+project = ppdorg_user_content
+dependencies[] = features
+dependencies[] = properties
+dependencies[] = text
+features[features_api][] = api:2
+features[field_base][] = body
+features[field_base][] = field_tracking
+features[field_base][] = field_user_id
+features[field_instance][] = node-user-body
+features[field_instance][] = node-user-field_tracking
+features[field_instance][] = node-user-field_user_id
+features[node][] = user
