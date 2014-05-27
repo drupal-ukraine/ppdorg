@@ -13,6 +13,9 @@ dependencies[] = admin_menu_toolbar
 dependencies[] = features
 dependencies[] = properties
 dependencies[] = querypath
+dependencies[] = date
+dependencies[] = diff
+dependencies[] = strongarm
 
 ; Custom modules
 
