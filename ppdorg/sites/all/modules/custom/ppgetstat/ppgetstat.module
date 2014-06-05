@@ -159,10 +159,11 @@ function ppgetstat_commits_batch_start() {
  * This is the function that is called on each operation in ppgetstat_commits_batch_start.
  */
 function ppgetstat_batch_op_1($ret, $operation_details, &$context) {
+  // @todo do that from scratch.
 
   global $user;
 
-  if (isset($ret->data) && count($ret->data) > 0) {
+  /*if (isset($ret->data) && count($ret->data) > 0) {
     foreach ($ret->data as $node_arr) {
       if ($node_arr->type == 'status') {
         $node = new stdClass();
@@ -201,7 +202,7 @@ function ppgetstat_batch_op_1($ret, $operation_details, &$context) {
 
       }
     }
-  }
+  }*/
 
   ppgetstat_update_http_requests();
 }
@@ -224,7 +225,7 @@ function ppgetstat_get_http_requests() {
 }
 
 /**
- * Batch 'finished' callback used by both batch 1 and batch 2.
+ * Batch 'finished' callback used by batch 1.
  */
 function ppgetstat_finished($success, $results, $operations) {
   if ($success) {
@@ -257,19 +258,38 @@ function ppgetstat_finished($success, $results, $operations) {
   }
 }
 
-//
+/**
+ * Returns data for ppgetstat_batch_op_1($ret,...).
+ *
+ * @param int $i
+ *   Iterator from batch.
+ */
 function ppgetstat_dorg_commits_request($i) {
+  // @todo do that from scratch.
   $usersData = variable_get('ppgetstat_users');
 
   $qp = htmlqp('https://drupal.org/user/');
 
 }
 
+/**
+ * Get list of user ids.
+ *
+ * @return array
+ *   Returns array('nick1' => id1, 'nick2' => id2).
+ */
 function ppgetstat_get_user_ids() {
+  // @todo do that from scratch.
   $users = ppgetstat_get_users();
 
 }
 
+/**
+ * Get associated array of users entered in settings.
+ *
+ * @return array
+ *  Users array array('user1' => array('user1_nick1', 'user1_nick2'), 'user2' => array('user2_nick)).
+ */
 function ppgetstat_get_users() {
   $users = variable_get('ppgetstat_users');
   $user = array();
