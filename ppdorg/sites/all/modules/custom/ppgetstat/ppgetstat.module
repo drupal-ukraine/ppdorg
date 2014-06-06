@@ -424,7 +424,7 @@ function ppgetstat_get_nid_by_nick($nick) {
 /**
  * Saves changes to a node or adds a new node. Created for anility to save custom timestamps.
  *
- * @param $node
+ * @param object $node
  *   The $node object to be saved. If $node->nid is
  *   omitted (or $node->is_new is TRUE), a new node will be added.
  */
@@ -553,7 +553,8 @@ function ppgetstat_node_save($node) {
     // Ignore slave server temporarily to give time for the
     // saved node to be propagated to the slave.
     db_ignore_slave();
-  } catch (Exception $e) {
+  }
+  catch (Exception $e) {
     $transaction->rollback();
     watchdog_exception('node', $e);
     throw $e;
