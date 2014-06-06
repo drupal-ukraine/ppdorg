@@ -167,9 +167,11 @@ function ppgetstat_dorg_commits_request($id_user) {
   $commits_data = explode(" ", $commits_text);
 
   drupal_set_message($id_user[1] . '`s commits count:' . $commits_data[1]);
+
   return array(
     'user' => $id_user[1],
     'commits' => $commits_data[1],
+    'nick' => $id_user[2],
   );
 }
 
@@ -180,6 +182,8 @@ function ppgetstat_dorg_commits_request($id_user) {
  */
 function ppgetstat_batch_op_1($ret, $operation_details, &$context) {
   // @todo Save stats to nodes here. User will be passed count(nicks) time.
+
+ 
 
   drupal_set_message('Hello, batch world: <pre>' . print_r($ret, TRUE) . '</pre>');
   ppgetstat_update_http_requests();
@@ -240,7 +244,7 @@ function ppgetstat_finished($success, $results, $operations) {
  * Get list of user ids.
  *
  * @return array
- *   Returns array('nick1' => array(id1, user), 'nick2' => array(id2, user)).
+ *   Returns array('nick1' => array(id1, user, nick1), 'nick2' => array(id2, user, nick2)).
  */
 function ppgetstat_get_user_ids() {
 
@@ -256,6 +260,7 @@ function ppgetstat_get_user_ids() {
       $ids[$nick] = array(
         ppgetstat_get_id_by_nick($nick),
         $user,
+        $nick,
       );
     }
   }
@@ -303,4 +308,11 @@ function ppgetstat_get_users() {
   }
 
   return $user;
+}
+
+function ppgetstat_get_nid_by_title($title) {
+  $query = db_select('node', 'n');
+  $query = $query->fields('n', array('nid'));
+  $query = $query->condition('type', 'user');
+  $query = $query->condition('title', $title);
 }
