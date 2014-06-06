@@ -290,7 +290,7 @@ function ppgetstat_get_id_by_nick($nick) {
  * Get associated array of users entered in settings.
  *
  * @return array
- *  Users array('user1' => array('user1_nick1', 'user1_nick2'), 'user2' => array('user2_nick)).
+ *   Users array('user1' => array('user1_nick1', 'user1_nick2'), 'user2' => array('user2_nick)).
  */
 function ppgetstat_get_users() {
   $users = variable_get('ppgetstat_users');
