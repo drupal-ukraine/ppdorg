@@ -140,4 +140,19 @@ function ppdorg_install() {
         'theme_project' => $theme_project,
       ),
     ));
+
+  properties_attribute_save((object) array(
+      'label' => 'Drupal.org commits',
+      'name' => 'commits'
+    ));
+  $ddorg_commits = properties_attribute_load('commits');
+  $ddorg_commits->weight = 0;
+
+  properties_category_save((object) array(
+      'label' => 'Commits Tracking',
+      'name' => 'ddorg_commits',
+      'attributes' => array(
+        'commits' => $dorg_commits,
+      ),
+    ));
 }
