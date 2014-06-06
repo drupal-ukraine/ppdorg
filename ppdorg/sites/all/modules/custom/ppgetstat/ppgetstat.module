@@ -121,7 +121,8 @@ function ppgetstat_commits_batch_start() {
 
   //drupal_set_message('ret: <pre>' . print_r($ret, TRUE));
 
-  $num_operations = variable_get('ppgetstat_pages_to_scan');
+  $user_ids = ppgetstat_get_user_ids();
+  $num_operations = count($user_ids);
   drupal_set_message(t('Creating an array of @num operations', array('@num' => $num_operations)));
 
 
@@ -131,20 +132,16 @@ function ppgetstat_commits_batch_start() {
   // running Drupal from scratch to accomplish the operation. If the operation
   // returns with $context['finished'] != TRUE, then it will be called again.
   // In this example, $context['finished'] is always TRUE.
-  for ($i = 0; $i < $num_operations; $i++) {
-    //drupal_set_message('iteration: <pre>' . print_r($i, TRUE) . '</pre>');
-    // Each operation is an array consisting of
-    // - The function to call.
-    // - An array of arguments to that function.
-
+  foreach ($user_ids as $nick => $id_user) {
     $operations[] = array(
       'ppgetstat_batch_op_1',
       array(
-        ppgetstat_dorg_commits_request($i),
-        t('(Operation @operation)', array('@operation' => $i)),
+        ppgetstat_dorg_commits_request($id_user),
+        t('(Get commits counter for user @nick)', array('@nick' => $nick)),
       ),
     );
   }
+
   $batch = array(
     'operations' => $operations,
     'finished' => 'ppgetstat_finished',
@@ -154,56 +151,40 @@ function ppgetstat_commits_batch_start() {
 }
 
 /**
+ * Returns data for ppgetstat_batch_op_1($ret,...).
+ *
+ * @param array $id_user
+ *   array(userid, username).
+ *
+ * @return array
+ *   array('user' => username, 'commits' => 123).
+ */
+function ppgetstat_dorg_commits_request($id_user) {
+  // @todo Cache downloaded pages to filesystem: files/dorgpages/nodeid_week_year.html
+
+  // Drupal.org commits counter selector: "div.item-list li.last"
+  $qp = htmlqp('https://drupal.org/user/' . $id_user[0], 'div.item-list li.last');
+
+  // "Total: XXX commits"
+  $commits_text = $qp->text();
+  $commits_data = explode(" ", $commits_text);
+
+  drupal_set_message($id_user[1] . '`s commits count:' . $commits_data[1]);
+  return array(
+    'user' => $id_user[1],
+    'commits' => $commits_data[1],
+  );
+}
+
+/**
  * Batch operation for batch 1: load a node.
  *
  * This is the function that is called on each operation in ppgetstat_commits_batch_start.
  */
 function ppgetstat_batch_op_1($ret, $operation_details, &$context) {
-  // @todo do that from scratch.
+  // @todo Save stats to nodes here. User will be passed count(nicks) time.
 
-  global $user;
-
-  /*if (isset($ret->data) && count($ret->data) > 0) {
-    foreach ($ret->data as $node_arr) {
-      if ($node_arr->type == 'status') {
-        $node = new stdClass();
-        $appid_nid = explode('_', $node_arr->id);
-        $node->title = isset($node_arr->message) ? truncate_utf8($node_arr->message, 64, TRUE, TRUE) : $appid_nid[1];
-        $ret = psybook_check_node_by_title($node->title);
-        if (!isset($ret[0]) | $ret[0] == 0) {
-          $node->type = 'message';
-          //$node->nid = $node->title;
-          node_object_prepare($node);
-          $node->language = LANGUAGE_NONE;
-          $node->uid = $user->uid;
-          $node->created = $node_arr->created_time;
-          $node->changed = $node_arr->updated_time;
-          $node->timestamp = $node_arr->created_time;
-          $node->status = 1;
-          $node->is_new = TRUE;
-          $node->revision = FALSE;
-          $node->validated = TRUE;
-          $node->log = '';
-          $node->body['und'][0]['value'] = $node_arr->message;
-          if (isset($node_arr->message)) {
-            $node = node_submit($node);
-            psybook_node_save($node);
-          }
-        }
-
-
-        // Store some results for post-processing in the 'finished' callback.
-        // The contents of 'results' will be available as $results in the
-        // 'finished' function (in this example, batch_example_finished()).
-        $context['results'][] = $appid_nid[1] . ' : ' . check_plain($node->title);
-
-        // Optional message displayed under the progressbar.
-        $context['message'] = t('Saving node "@title"', array('@title' => $node->title)) . ' ' . $operation_details;
-
-      }
-    }
-  }*/
-
+  drupal_set_message('Hello, batch world: <pre>' . print_r($ret, TRUE) . '</pre>');
   ppgetstat_update_http_requests();
 }
 
@@ -259,29 +240,53 @@ function ppgetstat_finished($success, $results, $operations) {
 }
 
 /**
- * Returns data for ppgetstat_batch_op_1($ret,...).
- *
- * @param int $i
- *   Iterator from batch.
- */
-function ppgetstat_dorg_commits_request($i) {
-  // @todo do that from scratch.
-  $usersData = variable_get('ppgetstat_users');
-
-  $qp = htmlqp('https://drupal.org/user/');
-
-}
-
-/**
  * Get list of user ids.
  *
  * @return array
- *   Returns array('nick1' => id1, 'nick2' => id2).
+ *   Returns array('nick1' => array(id1, user), 'nick2' => array(id2, user)).
  */
 function ppgetstat_get_user_ids() {
-  // @todo do that from scratch.
-  $users = ppgetstat_get_users();
 
+  $ids = variable_get('ppgetstat_get_user_ids', array());
+  if (!empty($ids)) {
+    return $ids;
+  }
+
+  $users = ppgetstat_get_users();
+  $ids = array();
+  foreach ($users as $user => $nicks) {
+    foreach ($nicks as $nick) {
+      $ids[$nick] = array(
+        ppgetstat_get_id_by_nick($nick),
+        $user,
+      );
+    }
+  }
+  variable_set('ppgetstat_get_user_ids', $ids);
+
+  return $ids;
+}
+
+/**
+ * Get drupal.org user ID using nickname and http://dgo.to.
+ *
+ * @param string $nick
+ *   Nickname.
+ *
+ * @return int
+ *   Drupal.org user id.
+ */
+function ppgetstat_get_id_by_nick($nick) {
+  if ($id_cached = cache_get('ppgetstat_nick_' . $nick)) {
+    return $id_cached->data;
+  }
+  $nick_data = drupal_http_request('http://dgo.to/@' . $nick);
+  $request = parse_url($nick_data->redirect_url);
+  $id_data = explode("/", $request['path']);
+  $id = $id_data[2];
+  cache_set('ppgetstat_nick_' . $nick, $id);
+
+  return $id;
 }
 
 /**
@@ -299,5 +304,6 @@ function ppgetstat_get_users() {
       $user[$nicks[0]] = $nicks;
     }
   }
+
   return $user;
 }

@@ -22,3 +22,4 @@ dependencies[] = ppgetstat
 
 ; Features
 dependencies[] = ppdorg_user_content
+dependencies[] = ppgetstat_variables
