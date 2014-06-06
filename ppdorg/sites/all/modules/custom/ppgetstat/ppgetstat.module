@@ -32,7 +32,7 @@ function ppgetstat_menu() {
 }
 
 /**
- * ppgetstat settings form.
+ * Module ppgetstat settings form.
  *
  * @param array $form
  *   Drupal form.
@@ -61,7 +61,7 @@ function ppgetstat_settings_form($form, &$form_state) {
 }
 
 /**
- * ppgetstat content import form.
+ * Module ppgetstat content import form.
  *
  * @param array $form
  *   Drupal form.
@@ -87,7 +87,7 @@ function ppgetstat_import_form($form, &$form_state) {
 }
 
 /**
- * ppgetstat content import form submit handler.
+ * Module ppgetstat content import form submit handler.
  *
  * @param array $form
  *   Drupal form.
@@ -119,12 +119,9 @@ function ppgetstat_import_form_submit($form, &$form_state) {
  */
 function ppgetstat_commits_batch_start() {
 
-  //drupal_set_message('ret: <pre>' . print_r($ret, TRUE));
-
   $user_ids = ppgetstat_get_user_ids();
   $num_operations = count($user_ids);
   drupal_set_message(t('Creating an array of @num operations', array('@num' => $num_operations)));
-
 
   $operations = array();
   // Set up an operations array with some elements, each doing its own function
@@ -293,13 +290,13 @@ function ppgetstat_get_id_by_nick($nick) {
  * Get associated array of users entered in settings.
  *
  * @return array
- *  Users array array('user1' => array('user1_nick1', 'user1_nick2'), 'user2' => array('user2_nick)).
+ *  Users array('user1' => array('user1_nick1', 'user1_nick2'), 'user2' => array('user2_nick)).
  */
 function ppgetstat_get_users() {
   $users = variable_get('ppgetstat_users');
   $user = array();
-  foreach (preg_split("/((\r?\n)|(\r\n?))/", $users) as $userLine) {
-    $nicks = explode(',', $userLine);
+  foreach (preg_split("/((\r?\n)|(\r\n?))/", $users) as $user_line) {
+    $nicks = explode(',', $user_line);
     if (isset($nicks[0])) {
       $user[$nicks[0]] = $nicks;
     }
