@@ -94,7 +94,7 @@ function ppgetstat_settings_form($form, &$form_state) {
 function ppgetstat_import_form($form, &$form_state) {
   $form['ppgetstat_types'] = array(
     '#type' => 'checkboxes',
-    '#options' => drupal_map_assoc(array('commits', 'posts(placeholder)')),
+    '#options' => drupal_map_assoc(array('commits', 'posts')),
     '#title' => t('drupal.org user\'s data'),
   );
   $form['ppgetstat_import'] = array(
@@ -119,14 +119,21 @@ function ppgetstat_import_form_submit($form, &$form_state) {
   drupal_set_message('<pre>' . print_r($form_state['values'], TRUE) . '</pre>');
 
   // Grab commits in a batch.
-  if ($form_state['values']['ppgetstat_types']['commits'] == 'commits') {
+  if ($form_state['values']['ppgetstat_types']['commits'] === 'commits') {
     $_SESSION['http_request_count'] = 0;
     $function = 'ppgetstat_commits_batch_start';
     $batch = $function();
     batch_set($batch);
   }
 
-  // @todo create batches for all other types.
+  if ($form_state['values']['ppgetstat_types']['posts'] === 'posts') {
+    $_SESSION['http_request_count'] = 0;
+    $function = 'ppgetstat_posts_batch_start';
+    $batch = $function();
+    batch_set($batch);
+  }
+
+    // @todo create batches for all other types.
 
 }
 
@@ -166,6 +173,7 @@ function ppgetstat_commits_batch_start() {
   return $batch;
 }
 
+
 /**
  * Returns data for ppgetstat_batch_op_1($ret,...).
  *
@@ -190,6 +198,84 @@ function ppgetstat_dorg_commits_request($id_user) {
   return array(
     'user' => $id_user[1],
     'commits' => $commits_data[1],
+    'nick' => $id_user[2],
+  );
+}
+
+/**
+ * Prepare batch operations.
+ *
+ * @return array
+ *   Array for posts batch routine.
+ */
+function ppgetstat_posts_batch_start() {
+
+  $user_ids = ppgetstat_get_user_ids();
+  $num_operations = count($user_ids);
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $num_operations)));
+
+  $operations = array();
+  // Set up an operations array with some elements, each doing its own function
+  // Each operation in the operations array means at least one new HTTP request,
+  // running Drupal from scratch to accomplish the operation. If the operation
+  // returns with $context['finished'] != TRUE, then it will be called again.
+  // In this example, $context['finished'] is always TRUE.
+  foreach ($user_ids as $nick => $id_user) {
+    $operations[] = array(
+      'ppgetstat_batch_op_1',
+      array(
+        ppgetstat_dorg_posts_request($id_user),
+        t('(Get posts counter for user @nick)', array('@nick' => $nick)),
+      ),
+    );
+  }
+
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'ppgetstat_finished',
+  );
+
+  return $batch;
+}
+
+
+/**
+ * Returns data for ppgetstat_batch_op_1($ret,...).
+ *
+ * @param array $id_user
+ *   array(userid, username).
+ *
+ * @return array
+ *   array('user' => username, 'posts' => 123, 'nick' => nickname).
+ */
+function ppgetstat_dorg_posts_request($id_user) {
+  // @todo Cache downloaded pages to filesystem: files/dorgpages/nodeid_week_year.html
+
+  // Go to user track page and search for pager links
+  // if found any then we have more then one page
+  // so lets count items per page, page count and how many posts we have on last page.
+  $qp = htmlqp('https://drupal.org/user/' . $id_user[0] . '/track', '#content .content');
+  $qp_clone = clone($qp);
+  $last_page = $qp_clone->find('.pager a:last');
+  if ($last_page->size()) {
+    $qp_clone = clone($qp);
+    $last_page_url = $last_page->attr('href');
+    $parts = parse_url($last_page_url);
+    parse_str($parts['query'], $query);
+    $count_per_page = $qp_clone->find('tbody tr')->size();
+    // Skip last page
+    $page_count = $query['page'] - 1;
+    $post_count = $count_per_page * $page_count + htmlqp('https://drupal.org' . $last_page_url, '.content tbody tr')->size();
+  }
+  else {
+    $post_count = $qp_clone->find('tbody tr')->size();
+  }
+
+  drupal_set_message($id_user[1] . '`s posts count:' . $post_count);
+
+  return array(
+    'user' => $id_user[1],
+    'commits' => $post_count[1],
     'nick' => $id_user[2],
   );
 }
