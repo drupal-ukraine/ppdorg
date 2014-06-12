@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the PPGETSTAT variables feature.
+ */
+
+include_once 'ppgetstat_variables.features.inc';
