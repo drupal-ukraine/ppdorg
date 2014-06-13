@@ -123,7 +123,7 @@ function ppdorg_install() {
 
   properties_category_save((object) array(
       'label' => 'Posts Tracking',
-      'name' => 'dorg_posts_tracking',
+      'name' => 'ddorg_posts_tracking',
       'attributes' => array(
         'book_listing' => $book_listing,
         'book_page' => $book_page,
@@ -152,7 +152,7 @@ function ppdorg_install() {
       'label' => 'Commits Tracking',
       'name' => 'ddorg_commits',
       'attributes' => array(
-        'commits' => $dorg_commits,
+        'commits' => $ddorg_commits,
       ),
     ));
 }
