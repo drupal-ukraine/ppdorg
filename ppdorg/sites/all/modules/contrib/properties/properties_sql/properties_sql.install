@@ -1,5 +1,4 @@
 <?php
-// $Id: properties_sql.install,v 1.1 2010/12/22 19:55:20 berdir Exp $
 
 /**
  * @file
@@ -19,7 +18,7 @@ function properties_sql_schema() {
       'name' => array(
         'description'   => 'machine_name of the category',
         'type' => 'varchar',
-        'length' => 255,
+        'length' => 128,
         'not null' => TRUE,
         'default' => ''
       ),
@@ -42,7 +41,7 @@ function properties_sql_schema() {
       'name' => array(
         'description'   => 'machine_name of the attribute',
         'type' => 'varchar',
-        'length' => 255,
+        'length' => 128,
         'not null' => TRUE,
         'default' => ''
       ),
@@ -66,14 +65,14 @@ function properties_sql_schema() {
       'category_name' => array(
         'description'   => 'refers to category',
         'type' => 'varchar',
-        'length' => 255,
+        'length' => 128,
         'not null' => TRUE,
         'default' => ''
       ),
       'attribute_name' => array(
         'description'   => 'refers to attribute',
         'type' => 'varchar',
-        'length' => 255,
+        'length' => 128,
         'not null' => TRUE,
         'default' => ''
       ),
@@ -93,8 +92,7 @@ function properties_sql_schema() {
         'columns' => array('name' => 'attribute_name')
         ),
       ),
-    // MARIA Storage engine key length must not be longer than 1024 bytes.
-    'primary key'     => array(array('category_name', 100), array('attribute_name', 100)),
+    'primary key'     => array('category_name', 'attribute_name'),
   );
 
 
@@ -105,7 +103,7 @@ function properties_sql_schema() {
       'name' => array(
         'description'   => 'machine_name of the template',
         'type' => 'varchar',
-        'length' => 255,
+        'length' => 128,
         'not null' => TRUE,
         'default' => ''
       ),
@@ -128,14 +126,14 @@ function properties_sql_schema() {
       'template_name' => array(
         'description'   => 'refers to template',
         'type' => 'varchar',
-        'length' => 255,
+        'length' => 128,
         'not null' => TRUE,
         'default' => ''
       ),
       'category_name' => array(
         'description'   => 'refers to category',
         'type' => 'varchar',
-        'length' => 255,
+        'length' => 128,
         'default' => ''
       ),
       'weight' => array(
@@ -154,8 +152,7 @@ function properties_sql_schema() {
         'columns' => array('name' => 'category_name')
         ),
       ),
-    // MARIA Storage engine key length must not be longer than 1024 bytes.
-    'primary key'     => array(array('template_name', 100), array('category_name', 100)),
+    'primary key'     => array('template_name', 'category_name'),
   );
 
   return $schema;

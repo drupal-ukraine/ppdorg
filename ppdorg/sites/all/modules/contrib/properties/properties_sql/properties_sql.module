@@ -1,6 +1,9 @@
 <?php
-// $Id: properties_sql.module,v 1.1 2010/12/22 19:55:20 berdir Exp $
 
+/**
+ * @file
+ * This module implements the attribute and category API with a SQL backend.
+ */
 
 /**
  * Save an attribute object.
@@ -12,7 +15,7 @@ function properties_sql_properties_attribute_save($attribute) {
   db_merge('properties_attribute')
     ->key(array('name' => $attribute->name))
     ->fields(array(
-        'label' => $attribute->label,
+      'label' => $attribute->label,
     ))
     ->execute();
 }
@@ -36,7 +39,8 @@ function properties_sql_properties_attribute_delete($attribute) {
  *   Machine readable name of the attribute.
  */
 function properties_sql_properties_attribute_load($name) {
-  return reset(properties_sql_properties_attribute_load_multiple(array($name)));
+  $attributes = properties_sql_properties_attribute_load_multiple(array($name));
+  return reset($attributes);
 }
 
 /**
@@ -137,7 +141,8 @@ function properties_sql_properties_category_delete($category) {
  *   Machine readable name of the category.
  */
 function properties_sql_properties_category_load($name) {
-  return reset(properties_sql_properties_category_load_multiple(array($name)));
+  $categories = properties_sql_properties_category_load_multiple(array($name));
+  return reset($categories);
 }
 
 /**
@@ -202,7 +207,6 @@ function properties_sql_properties_category_load_paging($per_page, array $option
     ->fetchAllAssoc('name');
 }
 
-
 /**
  * Save a template object.
  *
@@ -213,7 +217,7 @@ function properties_sql_properties_template_save($template) {
   db_merge('properties_template')
     ->key(array('name' => $template->name))
     ->fields(array(
-        'label' => $template->label,
+      'label' => $template->label,
     ))
     ->execute();
 
@@ -234,7 +238,6 @@ function properties_sql_properties_template_save($template) {
   $insert->execute();
 }
 
-
 /**
  * Delete a Template.
  *
@@ -251,8 +254,6 @@ function properties_sql_properties_template_delete($template) {
     ->execute();
 }
 
-
-
 /**
  * Load a template based on the name.
  *
@@ -260,9 +261,9 @@ function properties_sql_properties_template_delete($template) {
  *   Machine readable name of the template.
  */
 function properties_sql_properties_template_load($name) {
-  return reset(properties_sql_properties_template_load_multiple(array($name)));
+  $templates = properties_sql_properties_template_load_multiple(array($name));
+  return reset($templates);
 }
-
 
 /**
  * Load multiple templates based on their names.

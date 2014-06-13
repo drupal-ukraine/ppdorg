@@ -1,5 +1,4 @@
 <?php
-// $Id: properties_compare.pages.inc,v 1.1 2010/12/22 19:55:20 berdir Exp $
 
 /**
  * @file
@@ -24,7 +23,8 @@ function properties_compare_page() {
   $first = array();
   // First, loop over compare items to collect categories and attributes.
   foreach ($list as $key => $item) {
-    $entity = reset(entity_load($item['entity_type'], array($item['entity_id'])));
+    $entity = entity_load($item['entity_type'], array($item['entity_id']));
+    $entity = reset($entity);
     if (!$first) {
       $first = $item + array('entity' => $entity);
     }
