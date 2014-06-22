@@ -422,7 +422,7 @@ function ppgetstat_get_nid_by_nick($nick) {
 }
 
 /**
- * Saves changes to a node or adds a new node. Created for anility to save custom timestamps.
+ * Saves changes to a node or adds a new node. Created for ability to save custom timestamps.
  *
  * @param object $node
  *   The $node object to be saved. If $node->nid is
