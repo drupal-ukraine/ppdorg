@@ -125,14 +125,11 @@ function ppgetstat_import_form_submit($form, &$form_state) {
     $batch = $function();
     batch_set($batch);
   }
-
-    // @todo create batches for all other types.
-
 }
 
 /**
  * Prepare batch operations.
- *ppgetstat_dorg_request
+ *
  * @return array
  *   Array for commits batch routine.
  */
@@ -166,10 +163,25 @@ function ppgetstat_batch_start() {
   return $batch;
 }
 
+/**
+ * Single function-wrapper to fetch commits and posts data for batch operations.
+ *
+ * @param array $user_data
+ *   array(userid, username).
+ *
+ * @return array
+ *   array(
+ *     'user' => string,
+ *     'commits' => int,
+ *     'posts' => int,
+ *     'nick' => string,
+ *   )
+ */
 function ppgetstat_dorg_request($user_data) {
   $commits = ppgetstat_dorg_commits_request($user_data);
-  $posts = ppgetstat_dorg_posts_request_alternative($user_data);
+  $posts = ppgetstat_dorg_posts_request($user_data);
   drupal_set_message('<pre>' . print_r($posts, TRUE) . '</pre>');
+
   return array(
     'user' => $user_data[1],
     'commits' => $commits,
@@ -184,8 +196,8 @@ function ppgetstat_dorg_request($user_data) {
  * @param array $id_user
  *   array(userid, username).
  *
- * @return array
- *   array('user' => username, 'commits' => 123, 'nick' => nickname).
+ * @return int|string
+ *   Commits number.
  */
 function ppgetstat_dorg_commits_request($id_user) {
   // @todo Cache downloaded pages to filesystem: files/dorgpages/nodeid_week_year.html
@@ -202,7 +214,18 @@ function ppgetstat_dorg_commits_request($id_user) {
   return $commits_data[1];
 }
 
-function ppgetstat_dorg_posts_request_alternative($id_user) {
+/**
+ * Returns data for ppgetstat_batch_op_1($ret,...).
+ *
+ * @param array $id_user
+ *   array(userid, username).
+ *
+ * @return array
+ *   array(
+ *     string => int, // post_type => posts count
+ *   )
+ */
+function ppgetstat_dorg_posts_request($id_user) {
   $qp = htmlqp('https://drupal.org/user/' . $id_user[0] . '/track', '#content .content');
   $qp_clone = clone($qp);
   $page_number = 0;
@@ -235,45 +258,68 @@ function ppgetstat_dorg_posts_request_alternative($id_user) {
   return $post_count;
 }
 
+/**
+ * Iterate through the table rows and increase post types entries count according to the Post Type label.
+ *
+ * @param QueryPath $content
+ *   Content of www.drupal.org/user/UID/track page wrapper with htmlqp.
+ *
+ * @param array $post_count
+ *   array(
+ *     string => int, // post_type => posts count
+ *   )
+ */
 function ppgetstat_parse_posts_table(QueryPath $content, &$post_count) {
   foreach ($content->find('tbody tr') as $tr) {
     switch ($tr->find('td:first')->text()) {
       case 'Book listing':
         $post_count['book_listing']++;
         break;
+
       case 'Book page':
         $post_count['book_page']++;
         break;
+
       case 'Case study':
         $post_count['case_study']++;
         break;
+
       case 'Change record':
         $post_count['change_record']++;
         break;
+
       case 'Distribution project':
         $post_count['distribution_project']++;
         break;
+
       case 'Drupal core':
         $post_count['drupal_core']++;
         break;
+
       case 'Drupal.org project':
         $post_count['drupal_org_project']++;
         break;
+
       case 'Issue':
         $post_count['issue']++;
         break;
+
       case 'Module project':
         $post_count['module_project']++;
         break;
+
       case 'Organization':
         $post_count['organization']++;
         break;
+
       case 'Release':
         $post_count['release']++;
         break;
+
       case 'Theme Engine project':
         $post_count['theme_engine_project']++;
         break;
+
       case 'Theme project':
         $post_count['theme_project']++;
         break;
