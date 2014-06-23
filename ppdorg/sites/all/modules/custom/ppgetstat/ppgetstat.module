@@ -11,9 +11,9 @@ define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 10);
 // Number of calls to drupal.org per cron run.
 define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 20);
 // If no stats available we scan commits for last half a year.
-define('PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING', 6 * 30 * 24 * 60 * 60);
+define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', 6 * 30 * 24 * 60 * 60);
 // We group statistics per week.
-define('PPGETSTST_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
+define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 /**
  * Implements hook_menu().
  */
@@ -614,7 +614,7 @@ function _ppgetstat_cron_createItem_stats_jobs() {
     $last_scan = db_query('SELECT timestamp FROM {ppgetstat_commits} WHERE doid = :doid ORDER BY timestamp DESC LIMIT 1',
       array(':doid' => $doid)
     )->fetchField();
-    $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+    $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
 
     if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
       continue;
@@ -793,7 +793,7 @@ function _ppgetstat_parse_commits($page_content, $do_uid, $timestamp) {
       break;
     }
 
-    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTST_TIME_PERIOD_GRANULARITY);
+    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
     if (!isset($commits_counter_array[$period_timestamp])) {
       $commits_counter_array[$period_timestamp] = 0;
     }
