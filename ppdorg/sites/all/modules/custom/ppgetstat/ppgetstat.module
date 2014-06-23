@@ -94,7 +94,7 @@ function ppgetstat_settings_form($form, &$form_state) {
 function ppgetstat_import_form($form, &$form_state) {
   $form['ppgetstat_types'] = array(
     '#type' => 'checkboxes',
-    '#options' => drupal_map_assoc(array('commits', 'posts(placeholder)')),
+    '#options' => drupal_map_assoc(array('commits', 'posts')),
     '#title' => t('drupal.org user\'s data'),
   );
   $form['ppgetstat_import'] = array(
@@ -119,15 +119,12 @@ function ppgetstat_import_form_submit($form, &$form_state) {
   drupal_set_message('<pre>' . print_r($form_state['values'], TRUE) . '</pre>');
 
   // Grab commits in a batch.
-  if ($form_state['values']['ppgetstat_types']['commits'] == 'commits') {
+  if ($form_state['values']['ppgetstat_types']['commits'] === 'commits') {
     $_SESSION['http_request_count'] = 0;
-    $function = 'ppgetstat_commits_batch_start';
+    $function = 'ppgetstat_batch_start';
     $batch = $function();
     batch_set($batch);
   }
-
-  // @todo create batches for all other types.
-
 }
 
 /**
@@ -136,7 +133,7 @@ function ppgetstat_import_form_submit($form, &$form_state) {
  * @return array
  *   Array for commits batch routine.
  */
-function ppgetstat_commits_batch_start() {
+function ppgetstat_batch_start() {
 
   $user_ids = ppgetstat_get_user_ids();
   $num_operations = count($user_ids);
@@ -152,7 +149,7 @@ function ppgetstat_commits_batch_start() {
     $operations[] = array(
       'ppgetstat_batch_op_1',
       array(
-        ppgetstat_dorg_commits_request($id_user),
+        ppgetstat_dorg_request($id_user),
         t('(Get commits counter for user @nick)', array('@nick' => $nick)),
       ),
     );
@@ -167,13 +164,40 @@ function ppgetstat_commits_batch_start() {
 }
 
 /**
+ * Single function-wrapper to fetch commits and posts data for batch operations.
+ *
+ * @param array $user_data
+ *   array(userid, username).
+ *
+ * @return array
+ *   array(
+ *     'user' => string,
+ *     'commits' => int,
+ *     'posts' => int,
+ *     'nick' => string,
+ *   )
+ */
+function ppgetstat_dorg_request($user_data) {
+  $commits = ppgetstat_dorg_commits_request($user_data);
+  $posts = ppgetstat_dorg_posts_request($user_data);
+  drupal_set_message('<pre>' . print_r($posts, TRUE) . '</pre>');
+
+  return array(
+    'user' => $user_data[1],
+    'commits' => $commits,
+    'posts' => $posts,
+    'nick' => $user_data[2],
+  );
+}
+
+/**
  * Returns data for ppgetstat_batch_op_1($ret,...).
  *
  * @param array $id_user
  *   array(userid, username).
  *
- * @return array
- *   array('user' => username, 'commits' => 123, 'nick' => nickname).
+ * @return int|string
+ *   Commits number.
  */
 function ppgetstat_dorg_commits_request($id_user) {
   // @todo Cache downloaded pages to filesystem: files/dorgpages/nodeid_week_year.html
@@ -187,11 +211,120 @@ function ppgetstat_dorg_commits_request($id_user) {
 
   drupal_set_message($id_user[1] . '`s commits count:' . $commits_data[1]);
 
-  return array(
-    'user' => $id_user[1],
-    'commits' => $commits_data[1],
-    'nick' => $id_user[2],
+  return $commits_data[1];
+}
+
+/**
+ * Returns data for ppgetstat_batch_op_1($ret,...).
+ *
+ * @param array $id_user
+ *   array(userid, username).
+ *
+ * @return array
+ *   array(
+ *     string => int, // post_type => posts count
+ *   )
+ */
+function ppgetstat_dorg_posts_request($id_user) {
+  $qp = htmlqp('https://drupal.org/user/' . $id_user[0] . '/track', '#content .content');
+  $qp_clone = clone($qp);
+  $page_number = 0;
+
+  $post_count = array(
+    'book_listing' => 0,
+    'book_page' => 0,
+    'case_study' => 0,
+    'change_record' => 0,
+    'distribution_project' => 0,
+    'drupal_core' => 0,
+    'drupal_org_project' => 0,
+    'issue' => 0,
+    'module_project' => 0,
+    'organization' => 0,
+    'release' => 0,
+    'theme_engine_project' => 0,
+    'theme_project' => 0,
   );
+
+  while ($qp_clone->find('.pager-next')->size()) {
+    ppgetstat_parse_posts_table($qp, $post_count);
+
+    $qp = htmlqp('https://drupal.org/user/' . $id_user[0] . '/track?page=' . ++$page_number, '#content .content');
+    $qp_clone = clone($qp);
+  }
+
+  ppgetstat_parse_posts_table($qp, $post_count);
+
+  return $post_count;
+}
+
+/**
+ * Iterate through the table rows and increase post types entries count according to the Post Type label.
+ *
+ * @param QueryPath $content
+ *   Content of www.drupal.org/user/UID/track page wrapper with htmlqp.
+ *
+ * @param array $post_count
+ *   array(
+ *     string => int, // post_type => posts count
+ *   )
+ */
+function ppgetstat_parse_posts_table(QueryPath $content, &$post_count) {
+  foreach ($content->find('tbody tr') as $tr) {
+    switch ($tr->find('td:first')->text()) {
+      case 'Book listing':
+        $post_count['book_listing']++;
+        break;
+
+      case 'Book page':
+        $post_count['book_page']++;
+        break;
+
+      case 'Case study':
+        $post_count['case_study']++;
+        break;
+
+      case 'Change record':
+        $post_count['change_record']++;
+        break;
+
+      case 'Distribution project':
+        $post_count['distribution_project']++;
+        break;
+
+      case 'Drupal core':
+        $post_count['drupal_core']++;
+        break;
+
+      case 'Drupal.org project':
+        $post_count['drupal_org_project']++;
+        break;
+
+      case 'Issue':
+        $post_count['issue']++;
+        break;
+
+      case 'Module project':
+        $post_count['module_project']++;
+        break;
+
+      case 'Organization':
+        $post_count['organization']++;
+        break;
+
+      case 'Release':
+        $post_count['release']++;
+        break;
+
+      case 'Theme Engine project':
+        $post_count['theme_engine_project']++;
+        break;
+
+      case 'Theme project':
+        $post_count['theme_project']++;
+        break;
+    }
+  }
 }
 
 /**
@@ -245,6 +378,105 @@ function ppgetstat_batch_op_1($ret, $operation_details, &$context) {
             'category' => 'ddorg_commits',
             'attribute' => 'commit',
             'value' => $ret['commits'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+        ),
+      ),
+      'ddorg_posts_tracking' => array(
+        'category' => '',
+        'name' => 'ddorg_posts_tracking',
+        '_weight' => 0,
+        'delete' => 'Delete',
+        'properties' => array(
+          'book_listing' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'book_listing',
+            'value' => $ret['posts']['book_listing'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'book_page' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'book_page',
+            'value' => $ret['posts']['book_page'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'case_study' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'case_study',
+            'value' => $ret['posts']['case_study'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'change_record' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'change_record',
+            'value' => $ret['posts']['change_record'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'distribution_project' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'distribution_project',
+            'value' => $ret['posts']['distribution_project'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'drupal_core' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'drupal_core',
+            'value' => $ret['posts']['drupal_core'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'drupal_org_project' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'drupal_org_project',
+            'value' => $ret['posts']['drupal_org_project'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'issue' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'issue',
+            'value' => $ret['posts']['issue'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'module_project' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'module_project',
+            'value' => $ret['posts']['module_project'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'organization' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'organization',
+            'value' => $ret['posts']['organization'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'release' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'release',
+            'value' => $ret['posts']['release'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'theme_engine_project' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'theme_engine_project',
+            'value' => $ret['posts']['theme_engine_project'],
+            '_weight' => 0,
+            'delete' => 'Delete',
+          ),
+          'theme_project' => array(
+            'category' => 'ddorg_posts_tracking',
+            'attribute' => 'theme_project',
+            'value' => $ret['posts']['theme_project'],
             '_weight' => 0,
             'delete' => 'Delete',
           ),
