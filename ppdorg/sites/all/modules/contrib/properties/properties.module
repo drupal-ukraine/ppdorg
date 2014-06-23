@@ -1,6 +1,9 @@
 <?php
 
-// $Id: properties.module,v 1.1 2010/12/22 19:55:20 berdir Exp $
+/**
+ * @file
+ * This module provides a dynamic property field that can contain an unlimited number of attribute value pairs.
+ */
 
 /**
  * Implements hook_permission().
@@ -249,13 +252,16 @@ function properties_field_schema($field) {
  * separately.
  */
 function properties_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
-  if (!empty($items[0])) {
+  if (!empty($items[0]) && !isset($items[0]['attribute'])) {
     $categories = $items[0];
     $items = array();
 
     // First step, move items into correct category. Necessary to be able to sort
     // them withing their category.
     foreach ($categories as $cname => $category) {
+      if (!is_array($category) || !is_array($category['properties'])) {
+        continue;
+      }
       foreach ($category['properties'] as $pname => $property) {
         if ($property['category'] != $cname) {
           // Add to new category.
@@ -269,14 +275,15 @@ function properties_field_presave($entity_type, $entity, $field, $instance, $lan
     // Next step, order categories and attributes.
     uasort($categories, '_field_sort_items_helper');
     foreach ($categories as $category) {
-      if (empty($category['properties'])) {
+      if (empty($category['properties']) || !is_array($category['properties'])) {
         continue;
       }
-      uasort($category['properties'], '_field_sort_items_helper');
-      foreach ($category['properties'] as $property) {
+      $properties = $category['properties'];
+      uasort($properties, '_field_sort_items_helper');
+      foreach ($properties as $property) {
         // If the attribute name was deleted, attribute is empty. Ignore these.
         if (empty($property['attribute'])) {
-          continue;;
+          continue;
         }
         // Add them in the sorted order to the items array.
         $items[] = array(
@@ -300,7 +307,7 @@ function properties_field_validate($entity_type, $entity, $field, $instance, $la
  * Implements hook_field_is_empty().
  */
 function properties_field_is_empty($item, $field) {
-  return !is_array($item) || !is_array(reset($item));
+  return !is_array($item);
 }
 
 /**
@@ -318,8 +325,6 @@ function properties_field_formatter_info() {
     ),
   );
 }
-
-
 
 /**
  * Implements hook_field_widget_info().
@@ -349,7 +354,7 @@ function properties_empty_attribute() {
 }
 
 /**
- * Implements hook_field_widet_form().
+ * Implements hook_field_widget_form().
  */
 function properties_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   $elements = array();
@@ -541,6 +546,7 @@ function properties_field_widget_form(&$form, &$form_state, $field, $instance, $
       '#size' => 32,
     );
     $elements['actions']['add_category'] = array(
+      '#name' => $field_name.$langcode,
       '#type' => 'submit',
       '#value' => t('Add category'),
       '#limit_validation_errors' => array(array($field_name, $langcode)),
@@ -567,6 +573,7 @@ function properties_field_widget_form(&$form, &$form_state, $field, $instance, $
       '#size' => 32,
     );
     $elements['actions']['add_attribute'] = array(
+      '#name' => $field_name.$langcode,
       '#type' => 'submit',
       '#value' => t('Add attribute'),
       '#limit_validation_errors' => array(array($field_name, $langcode)),
@@ -678,7 +685,6 @@ function properties_widget_remove_attribute($form, &$form_state) {
   $form_state['rebuild'] = TRUE;
 }
 
-
 /**
  * Submit callback to remove a category.
  */
@@ -758,6 +764,7 @@ function properties_field_formatter_view($entity_type, $entity, $field, $instanc
             'data' => check_plain($categories[$category]->label),
             'colspan' => 2,
             'header' => TRUE,
+            'class' => array(drupal_html_class($category)),
           ),
         );
         foreach ($items_in_category as $item) {
@@ -767,7 +774,16 @@ function properties_field_formatter_view($entity_type, $entity, $field, $instanc
           else {
             $label = properties_attribute_load($item['attribute'])->label;
           }
-          $rows[] = array(check_plain($label), check_plain($item['value']));
+          $rows[] = array(
+            array(
+              'data' => check_plain($label),
+              'class' => drupal_html_class($item['attribute']) . '-label',
+            ),
+            array(
+              'data' => check_plain($item['value']),
+              'class' => drupal_html_class($item['attribute']). '-data',
+            ),
+          );
         }
       }
       $element[0]['#markup'] = theme('table', array('rows' => $rows));
@@ -924,7 +940,7 @@ function properties_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
   if ($form['#field']['type'] == 'properties') {
     // Hide the cardinality setting on the field settings for properties fields.
     $form['field']['cardinality']['#default_value'] = FIELD_CARDINALITY_UNLIMITED;
-    $form['field']['#access'] = FALSE;
+    $form['field']['cardinality']['#access'] = FALSE;
   }
 }
 
@@ -955,4 +971,40 @@ function properties_extract_fields($entity_type, $entity) {
     }
   }
   return $properties_fields;
+}
+
+/**
+ * Implements hook_tmgmt_source_translation_structure().
+ *
+ * Allows properties' values to be extracted and translated within TMGMT.
+ */
+function properties_tmgmt_source_translation_structure($field_name, $entity_type, $entity, $field_instance){
+  $field_lang = field_language($entity_type, $entity, $field_name);
+  $structure = array();
+  if (!empty($entity->{$field_name}[$field_lang])) {
+    $structure['#label'] = check_plain($field_instance['label']);
+    foreach ($entity->{$field_name}[$field_lang] as $delta => $value) {
+      $structure[$delta]['#label'] = t('Delta #@delta', array('@delta' => $delta));
+      $attribute = properties_attribute_load($value['attribute']);
+      // Translatable user text of attribute.
+      $structure[$delta]['value'] = array(
+        '#label' => $attribute->label,
+        '#text' => $value['value'],
+        '#translate' => TRUE,
+      );
+      // Machine name for attribute.
+      $structure[$delta]['attribute'] = array(
+        '#label' => $structure['#label'],
+        '#text' => $value['attribute'],
+        '#translate' => FALSE,
+      );
+      // Machine name for category.
+      $structure[$delta]['category'] = array(
+        '#label' => $structure['#label'],
+        '#text' => $value['category'],
+        '#translate' => FALSE,
+      );
+    }
+  }
+  return $structure;
 }

@@ -1,5 +1,4 @@
 <?php
-// $Id: properties_compare.test,v 1.1 2010/12/22 19:55:20 berdir Exp $
 
 /**
  * @file
@@ -83,7 +82,7 @@ class PropertiesCompareTestCase extends PropertiesBaseTestCase {
     $patterns[] = t('Attributes');
     $patterns[] = $first_node->title;
     $patterns[] = $second_node->title;
-    $current_category = null;
+    $current_category = NULL;
     foreach ($first_node->{'field_' . $this->field_name}['und'] as $key => $item) {
       // Add the label of the category to the pattern if it changed.
       if (!$current_category || $item['category'] != $current_category->name) {

@@ -1,5 +1,4 @@
 <?php
-// $Id: properties.admin.inc,v 1.1 2010/12/22 19:55:20 berdir Exp $
 
 /**
  * @file
@@ -121,6 +120,7 @@ function properties_admin_attributes_list($form, $form_state) {
     '#header' => $header,
     '#empty' => t('No attributes found.'),
   );
+
   $form['content']['pager']['#markup'] = theme('pager');
   return $form;
 }
@@ -168,10 +168,12 @@ function properties_admin_attributes_form($form, &$form_state, $attribute = NULL
   $form['name'] = array(
     '#type' => 'machine_name',
     '#default_value' => $attribute->name,
-    '#maxlength' => 32,
+    '#maxlength' => 128,
     '#disabled' => !empty($attribute->name),
     '#machine_name' => array(
       'exists' => 'properties_attribute_load',
+      'source' => array('label'),
+      'replace' => '_',
     ),
     '#description' => t('A unique machine-readable name for this attribute. It must only contain lowercase letters, numbers, and underscores. This name will be used when using this attribute.'),
   );
@@ -275,10 +277,12 @@ function properties_admin_categories_form($form, &$form_state, $category = NULL)
   $form['name'] = array(
     '#type' => 'machine_name',
     '#default_value' => $form_state['category']->name,
-    '#maxlength' => 32,
+    '#maxlength' => 128,
     '#disabled' => empty($form_state['category']->new),
     '#machine_name' => array(
       'exists' => 'properties_category_load',
+      'source' => array('label'),
+      'replace' => '_',
     ),
     '#description' => t('A unique machine-readable name for this category. It must only contain lowercase letters, numbers, and underscores. This name will be used when using this attribute.'),
   );
@@ -447,7 +451,6 @@ function properties_admin_categories_add_another($form, &$form_state) {
   drupal_set_message(t('Category created.'));
 }
 
-
 /**
  * Returns HTML for the attributes table in the category table.
  *
@@ -521,7 +524,6 @@ function theme_properties_admin_categories_attributes_form($variables) {
 function properties_admin_update_label_js($form, &$form_state) {
   return $form['attributes'];
 }
-
 
 /**
  * Submit handler for the "Add another item" button of a field form.

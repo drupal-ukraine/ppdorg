@@ -1,5 +1,4 @@
 <?php
-// $Id: properties_compare.module,v 1.1 2010/12/22 19:55:20 berdir Exp $
 
 /**
  * @file
@@ -28,10 +27,11 @@ function properties_compare_menu() {
     'access arguments' => array('compare properties'),
     'type' => MENU_CALLBACK,
   );
+
   $items['properties/compare/delete/%/%'] = array(
     'title' => 'Delete from compare list',
     'page callback' => 'properties_compare_delete',
-    'page arguments' => array(3,4),
+    'page arguments' => array(3, 4),
     'file' => 'properties_compare.pages.inc',
     'access arguments' => array('compare properties'),
     'type' => MENU_CALLBACK,
@@ -107,7 +107,6 @@ function properties_compare_forms($form_id, $args) {
  * Form builder function; displays a form to add an entity to the compare list.
  */
 function properties_compare_add_form($form, &$form_state, $entity_type, $entity) {
-
   $form['entity_type'] = array(
     '#type' => 'value',
     '#value' => $entity_type,
@@ -262,7 +261,8 @@ function properties_compare_list_form($form, &$form_state, $list) {
   $first = NULL;
   $noncomparable = FALSE;
   foreach ($list as $compare_item) {
-    $entity = reset(entity_load($compare_item['entity_type'], array($compare_item['entity_id'])));
+    $entity = entity_load($compare_item['entity_type'], array($compare_item['entity_id']));
+    $entity = reset($entity);
     if (!$entity) {
       // Entity could not be loaded, ignore and remove from list.
       properties_compare_list_delete($compare_item['entity_type'], $compare_item['entity_id']);

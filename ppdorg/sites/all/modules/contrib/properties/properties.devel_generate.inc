@@ -1,5 +1,4 @@
 <?php
-// $Id: properties.devel_generate.inc,v 1.1 2010/12/22 19:55:20 berdir Exp $
 
 /**
  * @file

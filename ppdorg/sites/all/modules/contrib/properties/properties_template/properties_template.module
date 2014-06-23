@@ -1,6 +1,9 @@
 <?php
 
-// $Id: properties_template.module,v 1.1 2010/12/22 19:55:20 berdir Exp $
+/**
+ * @file
+ * This module implements the template functionality for properties.
+ */
 
 /**
  * Implements hook_permission().
@@ -156,14 +159,11 @@ function properties_template_delete($template) {
  * Implements hook_field_attach_form().
  */
 function properties_template_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
-
-
   // Load fields attached to the entity.
   $fields = field_info_instances($form['#entity_type'], $form['#bundle']);
 
   // Loop over fields.
   foreach ($fields as $field_name => $field) {
-
     // If langcode is empty, get default.
     if (empty($langcode)) {
       $langcode = field_language($entity_type, $entity, $field_name);
@@ -176,7 +176,7 @@ function properties_template_field_attach_form($entity_type, $entity, &$form, &$
 
         // Bail out if permissions are missing.
         if (!user_access('add properties templates')) {
-           return;
+          return;
         }
 
         // Prepare options for select.
@@ -205,17 +205,17 @@ function properties_template_field_attach_form($entity_type, $entity, &$form, &$
           ),
         );
         $form[$field_name][$langcode]['actions'] += $element;
-      } else {
+      }
+      else {
 
         // Bail out if permissions are missing.
         if (!user_access('administer properties templates')) {
-           return;
+          return;
         }
-        
+
         list($entity_id, , ) = entity_extract_ids($entity_type, $entity);
         $query = array('entity_type' => $entity_type, 'entity_id' => $entity_id, 'field_name' => $field_name);
 
-        $nodeId = $form['nid']['#value'];
         // should create such a query object ?enity_type=node&entity_id=78
         $link = 'admin/config/content/properties/templates/add/';
         $element['template'] = array(
@@ -225,7 +225,6 @@ function properties_template_field_attach_form($entity_type, $entity, &$form, &$
           '#options' => array('query' => $query),
         );
         $form[$field_name][$langcode]['actions'] += $element;
-
       }
     }
   }

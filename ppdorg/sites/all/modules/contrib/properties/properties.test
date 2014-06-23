@@ -1,5 +1,4 @@
 <?php
-// $Id: properties.test,v 1.1 2010/12/22 19:55:20 berdir Exp $
 
 /**
  * @file
@@ -252,7 +251,8 @@ class PropertiesBaseTestCase extends DrupalWebTestCase {
 
     // Get node id and return it.
     if (preg_match('|node/([0-9]+)|', $this->getUrl(), $match)) {
-      return reset(entity_load($entity, array($match[1])));
+      $entity = entity_load($entity, array($match[1]));
+      return reset($entity);
     }
   }
 }

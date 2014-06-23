@@ -1,5 +1,4 @@
 <?php
-// $Id: properties_template.test,v 1.1 2010/12/22 19:55:20 berdir Exp $
 
 /**
  * @file
@@ -171,7 +170,7 @@ class PropertiesTemplateTestCase extends PropertiesTemplateBaseTestCase {
     $template = $this->createTemplate(NULL, NULL, $this->categories);
 
     $this->loginTemplateUser();
-    
+
     // Verify that buttons to add attributes and categories don't exist.
     $this->drupalGet('node/add/page');
 
@@ -245,6 +244,5 @@ class PropertiesTemplateTestCase extends PropertiesTemplateBaseTestCase {
     // look if the template was stored in the db
     $template_object = properties_template_load($template_name);
     $this->assertEqual($template_object->label, $template_label);
-
   }
 }
