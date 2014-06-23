@@ -5,6 +5,10 @@
  * Drupal.org statistics routines.
  */
 
+define('PPGETSTAT_USER_NODE_TYPE', 'user');
+define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 1);
+// Six months.
+define('PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING', 24*60*60*30*6);
 /**
  * Implements hook_menu().
  */
@@ -559,4 +563,104 @@ function ppgetstat_node_save($node) {
     watchdog_exception('node', $e);
     throw $e;
   }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function ppgetstat_cron() {
+
+  // Create items in stats_jobs queue.
+  _ppgetstat_cron_createItem_stats_jobs();
+
+  // Process items from stats_jobs queue.
+  _ppgetstat_cron_processItem_stats_jobs();
+}
+
+/**
+ * If day has passed, scan each user's commits.
+ */
+function _ppgetstat_cron_createItem_stats_jobs() {
+  $last_scan = variable_get('ppgetstat_last_statsjobs_timestamp', REQUEST_TIME - PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING);
+
+  if ($last_scan > REQUEST_TIME - 24*60*60) {
+    return;
+  }
+  $queue = DrupalQueue::get('stats_jobs');
+  foreach (_ppgetstats_get_all_users() as $user_node) {
+    if (!isset($user_node->field_user_id[LANGUAGE_NONE][0]['value'])) {
+      continue;
+    }
+    $job = array(
+      'generate_urls_callback' => '_ppgetstat_get_code_tracking_urls',
+      'parse_pages_callback' => '_ppgetstat_parse_commits',
+      'do_uid' => $user_node->field_user_id[LANGUAGE_NONE][0]['value'],
+      'last_scan' => $last_scan,
+    );
+    $queue->createItem($job);
+  }
+
+  variable_set('ppgetstat_last_statsjobs_timestamp', REQUEST_TIME);
+}
+
+/**
+ * Process jobs from stats_jobs queue.
+ */
+function _ppgetstat_cron_processItem_stats_jobs() {
+  $stats_jobs_queue = DrupalQueue::get('stats_jobs');
+  $dorg_scrapping_queue = DrupalQueue::get('dorg_scrapping');
+  for ($i = 0; $i < PPGETSTAT_STATSJOBS_PROCESS_NUMBER; $i++) {
+    if ($stats_jobs_queue->numberOfItems() == 0) {
+      break;
+    }
+    $item = $stats_jobs_queue->claimItem();
+
+    $generate_urls_function = $item['data']['generate_urls_callback'];
+    if (!function_exists($generate_urls_function)) {
+      watchdog('ppgetstat', '"generate_urls_callback" is not defined.', 'error');
+      return;
+    }
+    $do_uid = $item->data['do_uid'];
+    $last_scan = $item->data['last_scan'];
+    foreach ($generate_urls_function($do_uid, $last_scan) as $url) {
+      // We keep the id of the stats_jobs queue to group all dorg_scrapping jobs.
+      $scrapping_job = array(
+        'id' => $item->item_id,
+        'url' => $url,
+        'timestamp' => $item->data['timestamp'],
+        'parse_pages_callback' => $item->data['parse_pages_callback'],
+      );
+      $dorg_scrapping_queue->createItem($scrapping_job);
+    }
+  }
+}
+
+/**
+ * Get all published user nodes.
+ */
+function _ppgetstats_get_all_users() {
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', PPGETSTAT_USER_NODE_TYPE)
+    ->propertyCondition('status', 1)
+    ->execute();
+  if (!empty($result)) {
+    $nids = array_keys($result['node']);
+    return node_load_multiple($nids);
+  }
+  return array();
+}
+
+/**
+ * Generate list of URLs for scanning the code.
+ */
+function _ppgetstat_get_code_tracking_urls($do_uid, $last_scan) {
+  // In worst scenario we expect person to do one page of commits every hour.
+  $days_number = (REQUEST_TIME - $last_scan) % 24*60;
+  $urls = array();
+  for ($i = 0; $i < $days_number; $i++) {
+    $urls[] = 'https://drupal.org/user/' . $do_uid . '/track/code?page=' . $i;
+  }
+  return $urls;
 }

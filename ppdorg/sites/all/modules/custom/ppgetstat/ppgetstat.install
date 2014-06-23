@@ -6,6 +6,37 @@
  */
 
 /**
+ * Implements hook_schema().
+ */
+function ppgetstat_schema() {
+  $schema['ppgetstat_commits'] = array(
+    'description' => 'Stores number of user commits per week.',
+    'fields' => array(
+      'doid'  => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Drupal.org user id.',
+      ),
+      'commits' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Number of commits for this week.',
+      ),
+      'timestamp' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'First day of the week we are checking the commits.',
+      ),
+    ),
+    'primary key' => array('doid'),
+  );
+
+  return $schema;
+}
+
+/**
  * Implements hook_uninstall.
  */
 function ppgetstat_uninstall() {
