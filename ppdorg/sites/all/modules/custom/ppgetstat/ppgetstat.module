@@ -11,9 +11,9 @@ define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 10);
 // Number of calls to drupal.org per cron run.
 define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 20);
 // If no stats available we scan commits for last half a year.
-define('PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING', 24*60*60*30*6);
+define('PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING', 6 * 30 * 24 * 60 * 60);
 // We group statistics per week.
-define('PPGETSTST_TIME_PERIOD_GRANULARITY', 7*24*60*60);
+define('PPGETSTST_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 /**
  * Implements hook_menu().
  */
@@ -601,7 +601,7 @@ function ppgetstat_cron() {
 function _ppgetstat_cron_createItem_stats_jobs() {
   $last_cron_run = variable_get('ppgetstat_last_statsjobs_timestamp');
 
-  if ($last_cron_run > REQUEST_TIME - 24*60*60) {
+  if ($last_cron_run > REQUEST_TIME - 24 * 60 * 60) {
     return;
   }
 
@@ -617,9 +617,7 @@ function _ppgetstat_cron_createItem_stats_jobs() {
     )->fetchField();
     $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING));
 
-
-
-    if ($last_scan > REQUEST_TIME - 24*60*60) {
+    if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
       continue;
     }
 
@@ -698,7 +696,7 @@ function _ppgetstats_get_all_users() {
 function _ppgetstat_get_code_tracking_urls($do_uid, $last_scan) {
   // In worst scenario we expect person to do one page (25 commits)
   // of commits every six hours.
-  $days_number = round((REQUEST_TIME - $last_scan) / (6*60*60));
+  $days_number = round((REQUEST_TIME - $last_scan) / (6 * 60 * 60));
   $urls = array();
   for ($i = 0; $i < $days_number; $i++) {
     $urls[] = 'https://drupal.org/user/' . $do_uid . '/track/code?page=' . $i;
@@ -818,11 +816,19 @@ function _ppgetstat_parse_commits($page_content, $do_uid, $timestamp) {
     if (isset($db_records[$period])) {
       $commits += $db_records[$period];
       db_query('UPDATE {ppgetstat_commits} SET commits = :commits WHERE doid = :doid AND timestamp = :timestamp', array(
-        array(':commits' => $commits, ':doid' => $do_uid, ':timestamp' => $period),
+        array(
+          ':commits' => $commits,
+          ':doid' => $do_uid,
+          ':timestamp' => $period,
+        ),
       ));
     }
     else {
-      $record = array('doid' => $do_uid, 'commits' => $commits, 'timestamp' => $period);
+      $record = array(
+        'doid' => $do_uid,
+        'commits' => $commits,
+        'timestamp' => $period,
+      );
       drupal_write_record('ppgetstat_commits', $record);
     }
   }
@@ -831,7 +837,7 @@ function _ppgetstat_parse_commits($page_content, $do_uid, $timestamp) {
 }
 
 /**
- * Parse string '<h3><a href="/project/apachesolr">Apache Solr Search</a>: <a href="/commitlog/commit/4838/9d8d6276d4246a0d2651b00bbd05786baa1324c9">October 7, 2013 20:40</a></h3>'
+ * Parse string '<h3><a href="/project/apachesolr">Apache Solr Search</a>: <a href="/commitlog/commit/4838/9d8d6276d4246a0d2651b00bbd05786baa1324c9">October 7, 2013 20:40</a></h3>'.
  */
 function _ppgetstat_parse_commits_page_date($original_string) {
   list(, $string) = explode('a>: <a href', $original_string);
@@ -851,8 +857,6 @@ function _ppgetstat_parse_commits_page_date($original_string) {
 
 /**
  * Access callback for commits tab.
- *
- * @param type $node
  */
 function ppgetstat_commits_access($node) {
   return ($node->type == PPGETSTAT_USER_NODE_TYPE);

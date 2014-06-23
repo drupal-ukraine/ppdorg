@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Separate file with page callbacks.
+ */
+
+/**
  * Page callback to display commits statistics.
  */
 function ppgetstat_commits_page($node) {
@@ -17,7 +22,7 @@ function ppgetstat_commits_page($node) {
   )->fetchAllKeyed();
 
   $beginning = REQUEST_TIME - PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING;
-  $timestamp =  $beginning - ($beginning % PPGETSTST_TIME_PERIOD_GRANULARITY);
+  $timestamp = $beginning - ($beginning % PPGETSTST_TIME_PERIOD_GRANULARITY);
 
   $table_data = array();
   while ($timestamp < REQUEST_TIME) {
@@ -33,7 +38,8 @@ function ppgetstat_commits_page($node) {
     $timestamp += PPGETSTST_TIME_PERIOD_GRANULARITY;
   }
 
-  $output = theme('table', array('header' => array(t('Date'), t('Commits')), 'rows' => $table_data));
+  $variables = array('header' => array(t('Date'), t('Commits')), 'rows' => $table_data);
+  $output = theme('table', $variables);
 
   return $output;
 }
