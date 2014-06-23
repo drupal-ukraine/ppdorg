@@ -21,8 +21,8 @@ function ppgetstat_commits_page($node) {
     array(':doid' => $do_uid)
   )->fetchAllKeyed();
 
-  $beginning = REQUEST_TIME - PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING;
-  $timestamp = $beginning - ($beginning % PPGETSTST_TIME_PERIOD_GRANULARITY);
+  $beginning = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
+  $timestamp = $beginning - ($beginning % PPGETSTAT_TIME_PERIOD_GRANULARITY);
 
   $table_data = array();
   while ($timestamp < REQUEST_TIME) {
@@ -35,7 +35,7 @@ function ppgetstat_commits_page($node) {
       $commits,
     );
 
-    $timestamp += PPGETSTST_TIME_PERIOD_GRANULARITY;
+    $timestamp += PPGETSTAT_TIME_PERIOD_GRANULARITY;
   }
 
   $variables = array(
