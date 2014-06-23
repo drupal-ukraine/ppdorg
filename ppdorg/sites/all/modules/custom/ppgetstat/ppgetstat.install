@@ -12,10 +12,15 @@ function ppgetstat_schema() {
   $schema['ppgetstat_commits'] = array(
     'description' => 'Stores number of user commits per week.',
     'fields' => array(
-      'doid'  => array(
+      'id'  => array(
         'type' => 'serial',
         'not null' => TRUE,
-        'description' => 'Primary Key: Drupal.org user id.',
+        'description' => 'Primary Key: id of the record.',
+      ),
+      'doid'  => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Drupal.org user id.',
       ),
       'commits' => array(
         'type' => 'int',
@@ -30,7 +35,7 @@ function ppgetstat_schema() {
         'description' => 'First day of the week we are checking the commits.',
       ),
     ),
-    'primary key' => array('doid'),
+    'primary key' => array('id'),
   );
 
   return $schema;

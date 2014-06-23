@@ -6,7 +6,8 @@
  */
 
 define('PPGETSTAT_USER_NODE_TYPE', 'user');
-define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 1);
+define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 10);
+define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 20);
 // Six months.
 define('PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING', 24*60*60*30*6);
 /**
@@ -575,6 +576,9 @@ function ppgetstat_cron() {
 
   // Process items from stats_jobs queue.
   _ppgetstat_cron_processItem_stats_jobs();
+
+  // Process items from stats_jobs queue.
+  _ppgetstat_cron_processItem_dorg_scrapping_jobs();
 }
 
 /**
@@ -633,6 +637,7 @@ function _ppgetstat_cron_processItem_stats_jobs() {
         'id' => $item->item_id,
         'url' => $url,
         'last_scan' => $last_scan,
+        'do_uid' => $do_uid,
         'parse_pages_callback' => $item->data['parse_pages_callback'],
       );
       $dorg_scrapping_queue->createItem($scrapping_job);
@@ -671,4 +676,147 @@ function _ppgetstat_get_code_tracking_urls($do_uid, $last_scan) {
     $urls[] = 'https://drupal.org/user/' . $do_uid . '/track/code?page=' . $i;
   }
   return $urls;
+}
+
+/**
+ * Process jobs from dorg_scrapping queue.
+ */
+function _ppgetstat_cron_processItem_dorg_scrapping_jobs() {
+  $dorg_scrapping_queue = DrupalQueue::get('dorg_scrapping');
+  for ($i = 0; $i < PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER; $i++) {
+    $queue_item = $dorg_scrapping_queue->claimItem();
+    if ($queue_item == FALSE) {
+      return;
+    }
+
+    $function = $queue_item->data['parse_pages_callback'];
+    if (!function_exists($function)) {
+      watchdog('ppgetstat', 'parse_pages_callback ":parse_pages_callback" is not defined.', array(
+        ':parse_pages_callback' => $function,
+      ), WATCHDOG_ERROR);
+      return;
+    }
+
+    $page_content = _ppgetstat_fetch_page($queue_item->data['url']);
+
+    try {
+      $result = $function($page_content, $queue_item->data['do_uid'], $queue_item->data['last_scan']);
+    }
+    catch (Exception $e) {
+      watchdog_exception('ppgetstat', $e);
+      $result = 0;
+    }
+
+    if (empty($result)) {
+      _ppgetstat_cleanup_dorg_scrapping_queue($queue_item->data['id']);
+    }
+
+    $dorg_scrapping_queue->deleteItem($queue_item);
+  }
+}
+
+/**
+ * Cleanup the dorg_scrapping queue.
+ */
+function _ppgetstat_cleanup_dorg_scrapping_queue($id) {
+  $dorg_scrapping_queue = DrupalQueue::get('dorg_scrapping');
+  while ($queue_item = $dorg_scrapping_queue->claimItem()) {
+    if ($queue_item->data['id'] == $id) {
+      $dorg_scrapping_queue->deleteItem($queue_item);
+    }
+    else {
+      $dorg_scrapping_queue->releaseItem($queue_item);
+      return;
+    }
+  }
+}
+
+/**
+ * Retrieve content of the page.
+ *
+ * @param string $url
+ *   URL of the page to retrieve.
+ */
+function _ppgetstat_fetch_page($url) {
+  watchdog('_ppgetstat_fetch_page', $url);
+  return file_get_contents($url);
+}
+
+/**
+ * Parse the page for the commits.
+ */
+function _ppgetstat_parse_commits($page_content, $do_uid, $timestamp) {
+  if (empty($page_content)) {
+    throw new Exception('Empty page content.');
+  }
+
+  // Extract string with project name and date of the commit.
+  // Example: <h3><a href="/project/apachesolr">Apache Solr Search</a>: <a href="/commitlog/commit/4838/9d8d6276d4246a0d2651b00bbd05786baa1324c9">October 7, 2013 20:40</a></h3>
+  $strings = htmlqp($page_content, '.commit-global h3');
+
+  if (empty($strings)) {
+    throw new Exception(t('Page does not have any ".commit-global h3" elements.'));
+  }
+
+  $commits_counter_array = array();
+  $commits_counter = 0;
+
+  foreach ($strings as $string) {
+    $commit_timestamp = _ppgetstat_parse_commits_page_date($string->html());
+
+    if ($commit_timestamp < $timestamp) {
+      break;
+    }
+
+    $week_timestamp = $commit_timestamp - ($commit_timestamp % 7*24*60*60);
+    if (!isset($commits_counter_array[$week_timestamp])) {
+      $commits_counter_array[$week_timestamp] = 0;
+    }
+    $commits_counter_array[$week_timestamp]++;
+    $commits_counter++;
+  }
+
+  if ($commits_counter == 0) {
+    return $commits_counter;
+  }
+
+  // SQL queries to update counters.
+  $db_records = array();
+  $weeks = array_keys($commits_counter_array);
+  $db_records = db_query('SELECT timestamp, commits FROM {ppgetstat_commits} WHERE doid = :doid AND timestamp IN (:weeks)',
+    array(':doid' => $do_uid, ':weeks' => $weeks)
+  )->fetchCol();
+  foreach ($commits_counter_array as $week => &$commits) {
+    if (isset($db_records[$week])) {
+      $commits += $db_records[$week];
+      db_query('UPDATE {ppgetstat_commits} SET commits = :commits WHERE doid = :doid AND timestamp = :timestamp', array(
+        array(':commits' => $commits, ':doid' => $do_uid, ':timestamp' => $week),
+      ));
+    }
+    else {
+      $record = array('doid' => $do_uid, 'commits' => $commits, 'timestamp' => $week);
+      drupal_write_record('ppgetstat_commits', $record);
+    }
+  }
+
+  return $commits_counter;
+}
+
+/**
+ * Parse string '<h3><a href="/project/apachesolr">Apache Solr Search</a>: <a href="/commitlog/commit/4838/9d8d6276d4246a0d2651b00bbd05786baa1324c9">October 7, 2013 20:40</a></h3>'
+ */
+function _ppgetstat_parse_commits_page_date($original_string) {
+  list(, $string) = explode('a>: <a href', $original_string);
+
+  // Cut off remainig part of the link tag in the beginning.
+  $string = substr($string, strpos($string, '>') + 1);
+  // Remove "</a></h3>" from the end of the string.
+  $string = substr($string, 0, strlen($string) - 9);
+
+  $timestamp = strtotime($string);
+
+  if (empty($timestamp)) {
+    throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $original_string)));
+  }
+  return $timestamp;
 }
