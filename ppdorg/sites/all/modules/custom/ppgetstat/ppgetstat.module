@@ -6,11 +6,14 @@
  */
 
 define('PPGETSTAT_USER_NODE_TYPE', 'user');
+// Number of users queued to be scanned per cron run.
 define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 10);
+// Number of calls to drupal.org per cron run.
 define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 20);
-// Six months.
+// If no stats available we scan commits for last half a year.
 define('PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING', 24*60*60*30*6);
-define('PPGETSTST_TIME_PERIOD_GRANULARITY', 24*60*60);
+// We group statistics per week.
+define('PPGETSTST_TIME_PERIOD_GRANULARITY', 7*24*60*60);
 /**
  * Implements hook_menu().
  */
@@ -593,23 +596,37 @@ function ppgetstat_cron() {
 }
 
 /**
- * If day has passed, scan each user's commits.
+ * If period has passed, scan each user's commits.
  */
 function _ppgetstat_cron_createItem_stats_jobs() {
-  $last_scan = variable_get('ppgetstat_last_statsjobs_timestamp', REQUEST_TIME - PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING);
+  $last_cron_run = variable_get('ppgetstat_last_statsjobs_timestamp');
 
-  if ($last_scan > REQUEST_TIME - 24*60*60) {
+  if ($last_cron_run > REQUEST_TIME - 24*60*60) {
     return;
   }
+
+
   $queue = DrupalQueue::get('stats_jobs');
   foreach (_ppgetstats_get_all_users() as $user_node) {
     if (!isset($user_node->field_user_id[LANGUAGE_NONE][0]['value'])) {
       continue;
     }
+    $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
+    $last_scan = db_query('SELECT timestamp FROM {ppgetstat_commits} WHERE doid = :doid ORDER BY timestamp DESC LIMIT 1',
+      array(':doid' => $doid)
+    )->fetchField();
+    $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+
+
+    if ($last_scan > REQUEST_TIME - 24*60*60) {
+      continue;
+    }
+
     $job = array(
       'generate_urls_callback' => '_ppgetstat_get_code_tracking_urls',
       'parse_pages_callback' => '_ppgetstat_parse_commits',
-      'do_uid' => $user_node->field_user_id[LANGUAGE_NONE][0]['value'],
+      'do_uid' => $doid,
       'last_scan' => $last_scan,
     );
     $queue->createItem($job);
@@ -681,7 +698,7 @@ function _ppgetstats_get_all_users() {
 function _ppgetstat_get_code_tracking_urls($do_uid, $last_scan) {
   // In worst scenario we expect person to do one page (25 commits)
   // of commits every six hours.
-  $days_number = round((REQUEST_TIME - $last_scan) / (24*60*6));
+  $days_number = round((REQUEST_TIME - $last_scan) / (6*60*60));
   $urls = array();
   for ($i = 0; $i < $days_number; $i++) {
     $urls[] = 'https://drupal.org/user/' . $do_uid . '/track/code?page=' . $i;
@@ -779,11 +796,11 @@ function _ppgetstat_parse_commits($page_content, $do_uid, $timestamp) {
       break;
     }
 
-    $day_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTST_TIME_PERIOD_GRANULARITY);
-    if (!isset($commits_counter_array[$day_timestamp])) {
-      $commits_counter_array[$day_timestamp] = 0;
+    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTST_TIME_PERIOD_GRANULARITY);
+    if (!isset($commits_counter_array[$period_timestamp])) {
+      $commits_counter_array[$period_timestamp] = 0;
     }
-    $commits_counter_array[$day_timestamp]++;
+    $commits_counter_array[$period_timestamp]++;
     $commits_counter++;
   }
 
@@ -793,19 +810,19 @@ function _ppgetstat_parse_commits($page_content, $do_uid, $timestamp) {
 
   // SQL queries to update counters.
   $db_records = array();
-  $days = array_keys($commits_counter_array);
-  $db_records = db_query('SELECT timestamp, commits FROM {ppgetstat_commits} WHERE doid = :doid AND timestamp IN (:days)',
-    array(':doid' => $do_uid, ':days' => $days)
+  $periods = array_keys($commits_counter_array);
+  $db_records = db_query('SELECT timestamp, commits FROM {ppgetstat_commits} WHERE doid = :doid AND timestamp IN (:periods)',
+    array(':doid' => $do_uid, ':periods' => $periods)
   )->fetchCol();
-  foreach ($commits_counter_array as $day => &$commits) {
-    if (isset($db_records[$day])) {
-      $commits += $db_records[$day];
+  foreach ($commits_counter_array as $period => &$commits) {
+    if (isset($db_records[$period])) {
+      $commits += $db_records[$period];
       db_query('UPDATE {ppgetstat_commits} SET commits = :commits WHERE doid = :doid AND timestamp = :timestamp', array(
-        array(':commits' => $commits, ':doid' => $do_uid, ':timestamp' => $day),
+        array(':commits' => $commits, ':doid' => $do_uid, ':timestamp' => $period),
       ));
     }
     else {
-      $record = array('doid' => $do_uid, 'commits' => $commits, 'timestamp' => $day);
+      $record = array('doid' => $do_uid, 'commits' => $commits, 'timestamp' => $period);
       drupal_write_record('ppgetstat_commits', $record);
     }
   }

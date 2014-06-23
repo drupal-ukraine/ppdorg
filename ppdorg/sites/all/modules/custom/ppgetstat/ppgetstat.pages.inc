@@ -37,4 +37,3 @@ function ppgetstat_commits_page($node) {
 
   return $output;
 }
-
