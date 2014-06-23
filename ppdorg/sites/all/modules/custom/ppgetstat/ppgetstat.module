@@ -614,10 +614,15 @@ function _ppgetstat_cron_processItem_stats_jobs() {
       break;
     }
     $item = $stats_jobs_queue->claimItem();
+    if ($item == FALSE) {
+      break;
+    }
 
-    $generate_urls_function = $item['data']['generate_urls_callback'];
+    $generate_urls_function = $item->data['generate_urls_callback'];
     if (!function_exists($generate_urls_function)) {
-      watchdog('ppgetstat', '"generate_urls_callback" is not defined.', 'error');
+      watchdog('ppgetstat', 'generate_urls_callback ":generate_urls_callback" is not defined.', array(
+        ':generate_urls_callback' => $generate_urls_function,
+      ), WATCHDOG_ERROR);
       return;
     }
     $do_uid = $item->data['do_uid'];
@@ -627,11 +632,13 @@ function _ppgetstat_cron_processItem_stats_jobs() {
       $scrapping_job = array(
         'id' => $item->item_id,
         'url' => $url,
-        'timestamp' => $item->data['timestamp'],
+        'last_scan' => $last_scan,
         'parse_pages_callback' => $item->data['parse_pages_callback'],
       );
       $dorg_scrapping_queue->createItem($scrapping_job);
     }
+
+    $stats_jobs_queue->deleteItem($item);
   }
 }
 
@@ -656,8 +663,9 @@ function _ppgetstats_get_all_users() {
  * Generate list of URLs for scanning the code.
  */
 function _ppgetstat_get_code_tracking_urls($do_uid, $last_scan) {
-  // In worst scenario we expect person to do one page of commits every hour.
-  $days_number = (REQUEST_TIME - $last_scan) % 24*60;
+  // In worst scenario we expect person to do one page (25 commits)
+  // of commits every six hours.
+  $days_number = round((REQUEST_TIME - $last_scan) / (24*60*6));
   $urls = array();
   for ($i = 0; $i < $days_number; $i++) {
     $urls[] = 'https://drupal.org/user/' . $do_uid . '/track/code?page=' . $i;
