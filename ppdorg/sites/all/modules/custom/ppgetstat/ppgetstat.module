@@ -10,10 +10,21 @@ define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 10);
 define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 20);
 // Six months.
 define('PPGETSTST_DEFAULT_TIME_PERIOD_FOR_SCANNING', 24*60*60*30*6);
+define('PPGETSTST_TIME_PERIOD_GRANULARITY', 24*60*60);
 /**
  * Implements hook_menu().
  */
 function ppgetstat_menu() {
+  $items['node/%node/commits'] = array(
+    'title' => 'Commits',
+    'description' => 'Commits statistics.',
+    'page callback' => 'ppgetstat_commits_page',
+    'page arguments' => array(1),
+    'access callback' => 'ppgetstat_commits_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'ppgetstat.pages.inc',
+  );
   $items['admin/config/services/ppgetstat'] = array(
     'title' => 'Get user profiles',
     'description' => 'PPgetstat settings.',
@@ -768,11 +779,11 @@ function _ppgetstat_parse_commits($page_content, $do_uid, $timestamp) {
       break;
     }
 
-    $week_timestamp = $commit_timestamp - ($commit_timestamp % 7*24*60*60);
-    if (!isset($commits_counter_array[$week_timestamp])) {
-      $commits_counter_array[$week_timestamp] = 0;
+    $day_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTST_TIME_PERIOD_GRANULARITY);
+    if (!isset($commits_counter_array[$day_timestamp])) {
+      $commits_counter_array[$day_timestamp] = 0;
     }
-    $commits_counter_array[$week_timestamp]++;
+    $commits_counter_array[$day_timestamp]++;
     $commits_counter++;
   }
 
@@ -782,19 +793,19 @@ function _ppgetstat_parse_commits($page_content, $do_uid, $timestamp) {
 
   // SQL queries to update counters.
   $db_records = array();
-  $weeks = array_keys($commits_counter_array);
-  $db_records = db_query('SELECT timestamp, commits FROM {ppgetstat_commits} WHERE doid = :doid AND timestamp IN (:weeks)',
-    array(':doid' => $do_uid, ':weeks' => $weeks)
+  $days = array_keys($commits_counter_array);
+  $db_records = db_query('SELECT timestamp, commits FROM {ppgetstat_commits} WHERE doid = :doid AND timestamp IN (:days)',
+    array(':doid' => $do_uid, ':days' => $days)
   )->fetchCol();
-  foreach ($commits_counter_array as $week => &$commits) {
-    if (isset($db_records[$week])) {
-      $commits += $db_records[$week];
+  foreach ($commits_counter_array as $day => &$commits) {
+    if (isset($db_records[$day])) {
+      $commits += $db_records[$day];
       db_query('UPDATE {ppgetstat_commits} SET commits = :commits WHERE doid = :doid AND timestamp = :timestamp', array(
-        array(':commits' => $commits, ':doid' => $do_uid, ':timestamp' => $week),
+        array(':commits' => $commits, ':doid' => $do_uid, ':timestamp' => $day),
       ));
     }
     else {
-      $record = array('doid' => $do_uid, 'commits' => $commits, 'timestamp' => $week);
+      $record = array('doid' => $do_uid, 'commits' => $commits, 'timestamp' => $day);
       drupal_write_record('ppgetstat_commits', $record);
     }
   }
@@ -819,4 +830,13 @@ function _ppgetstat_parse_commits_page_date($original_string) {
     throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $original_string)));
   }
   return $timestamp;
+}
+
+/**
+ * Access callback for commits tab.
+ *
+ * @param type $node
+ */
+function ppgetstat_commits_access($node) {
+  return ($node->type == PPGETSTAT_USER_NODE_TYPE);
 }
