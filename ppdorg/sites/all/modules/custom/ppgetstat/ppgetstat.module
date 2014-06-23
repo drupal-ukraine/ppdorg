@@ -605,7 +605,6 @@ function _ppgetstat_cron_createItem_stats_jobs() {
     return;
   }
 
-
   $queue = DrupalQueue::get('stats_jobs');
   foreach (_ppgetstats_get_all_users() as $user_node) {
     if (!isset($user_node->field_user_id[LANGUAGE_NONE][0]['value'])) {

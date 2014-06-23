@@ -38,7 +38,10 @@ function ppgetstat_commits_page($node) {
     $timestamp += PPGETSTST_TIME_PERIOD_GRANULARITY;
   }
 
-  $variables = array('header' => array(t('Date'), t('Commits')), 'rows' => $table_data);
+  $variables = array(
+    'header' => array(t('Date'), t('Commits')),
+    'rows' => $table_data,
+  );
   $output = theme('table', $variables);
 
   return $output;
