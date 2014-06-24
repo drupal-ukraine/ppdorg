@@ -9,7 +9,7 @@ define('PPGETSTAT_USER_NODE_TYPE', 'user');
 // Number of users queued to be scanned per cron run.
 define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 10);
 // Number of calls to drupal.org per cron run.
-define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 20);
+define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 10);
 // If no stats available we scan commits for last half a year.
 define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', 6 * 30 * 24 * 60 * 60);
 // We group statistics per week.
@@ -783,8 +783,12 @@ function _ppgetstat_cleanup_dorg_scrapping_queue($id) {
  *   URL of the page to retrieve.
  */
 function _ppgetstat_fetch_page($url) {
-  watchdog('_ppgetstat_fetch_page', $url);
-  return file_get_contents($url);
+  $time_pre = microtime(true);
+  $content = file_get_contents($url);
+  $time_post = microtime(true);
+  $exec_time = round($time_post - $time_pre, 2);
+  watchdog('_ppgetstat_fetch_page', $exec_time . 's ' . $url);
+  return $content;
 }
 
 /**
