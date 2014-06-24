@@ -783,9 +783,9 @@ function _ppgetstat_cleanup_dorg_scrapping_queue($id) {
  *   URL of the page to retrieve.
  */
 function _ppgetstat_fetch_page($url) {
-  $time_pre = microtime(true);
+  $time_pre = microtime(TRUE);
   $content = file_get_contents($url);
-  $time_post = microtime(true);
+  $time_post = microtime(TRUE);
   $exec_time = round($time_post - $time_pre, 2);
   watchdog('_ppgetstat_fetch_page', $exec_time . 's ' . $url);
   return $content;
