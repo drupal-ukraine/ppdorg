@@ -17,8 +17,8 @@ function ppgetstat_commits_page($node) {
 
   $do_uid = $node->field_user_id[LANGUAGE_NONE][0]['value'];
 
-  $db_data = db_query('SELECT timestamp, commits FROM {ppgetstat_commits} WHERE doid = :doid ORDER BY timestamp DESC',
-    array(':doid' => $do_uid)
+  $db_data = db_query('SELECT timestamp, items FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC',
+    array(':doid' => $do_uid, ':type' => PPGETSTAT_TYPE_COMMITS)
   )->fetchAllKeyed();
 
   $beginning = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;

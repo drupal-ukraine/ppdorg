@@ -9,8 +9,8 @@
  * Implements hook_schema().
  */
 function ppgetstat_schema() {
-  $schema['ppgetstat_commits'] = array(
-    'description' => 'Stores number of user commits per week.',
+  $schema['ppgetstat'] = array(
+    'description' => 'Stores statistics about user.',
     'fields' => array(
       'id'  => array(
         'type' => 'serial',
@@ -22,17 +22,23 @@ function ppgetstat_schema() {
         'not null' => TRUE,
         'description' => 'Drupal.org user id.',
       ),
-      'commits' => array(
+      'items' => array(
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
-        'description' => 'Number of commits for this week.',
+        'description' => 'Number of items for this week.',
+      ),
+      'type' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Type of items.',
       ),
       'timestamp' => array(
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
-        'description' => 'First day of the week we are checking the commits.',
+        'description' => 'First day of the week we are checking the stats.',
       ),
     ),
     'primary key' => array('id'),

@@ -14,6 +14,8 @@ define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 20);
 define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', 6 * 30 * 24 * 60 * 60);
 // We group statistics per week.
 define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
+// Commmits type of data.
+define('PPGETSTAT_TYPE_COMMITS', 1);
 /**
  * Implements hook_menu().
  */
@@ -611,8 +613,8 @@ function _ppgetstat_cron_createItem_stats_jobs() {
       continue;
     }
     $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
-    $last_scan = db_query('SELECT timestamp FROM {ppgetstat_commits} WHERE doid = :doid ORDER BY timestamp DESC LIMIT 1',
-      array(':doid' => $doid)
+    $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+      array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMITS)
     )->fetchField();
     $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
 
@@ -808,27 +810,33 @@ function _ppgetstat_parse_commits($page_content, $do_uid, $timestamp) {
   // SQL queries to update counters.
   $db_records = array();
   $periods = array_keys($commits_counter_array);
-  $db_records = db_query('SELECT timestamp, commits FROM {ppgetstat_commits} WHERE doid = :doid AND timestamp IN (:periods)',
-    array(':doid' => $do_uid, ':periods' => $periods)
+  $db_records = db_query('SELECT timestamp, items FROM {ppgetstat} WHERE doid = :doid AND timestamp IN (:periods) AND type = :type',
+    array(
+      ':doid' => $do_uid,
+      ':periods' => $periods,
+      ':type' => PPGETSTAT_TYPE_COMMITS,
+    )
   )->fetchCol();
   foreach ($commits_counter_array as $period => &$commits) {
     if (isset($db_records[$period])) {
       $commits += $db_records[$period];
-      db_query('UPDATE {ppgetstat_commits} SET commits = :commits WHERE doid = :doid AND timestamp = :timestamp', array(
+      db_query('UPDATE {ppgetstat} SET commits = :commits WHERE doid = :doid AND timestamp = :timestamp AND type = :type', array(
         array(
           ':commits' => $commits,
           ':doid' => $do_uid,
           ':timestamp' => $period,
+          ':type' => PPGETSTAT_TYPE_COMMITS,
         ),
       ));
     }
     else {
       $record = array(
         'doid' => $do_uid,
-        'commits' => $commits,
+        'items' => $commits,
         'timestamp' => $period,
+        'type' => PPGETSTAT_TYPE_COMMITS,
       );
-      drupal_write_record('ppgetstat_commits', $record);
+      drupal_write_record('ppgetstat', $record);
     }
   }
 
