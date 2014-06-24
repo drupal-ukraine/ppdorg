@@ -613,25 +613,37 @@ function _ppgetstat_cron_createItem_stats_jobs() {
       continue;
     }
     $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
-    $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
-      array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMITS)
-    )->fetchField();
-    $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
 
-    if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
-      continue;
+    // Invoke hook so all modules can use it to provide jobs.
+    foreach (module_implements('ppgetstat_stats_job') as $module) {
+      $job = module_invoke_all('ppgetstat_stats_job', $doid);
+      $queue->createItem($job);
     }
-
-    $job = array(
-      'generate_urls_callback' => '_ppgetstat_get_code_tracking_urls',
-      'parse_pages_callback' => '_ppgetstat_parse_commits',
-      'do_uid' => $doid,
-      'last_scan' => $last_scan,
-    );
-    $queue->createItem($job);
   }
 
   variable_set('ppgetstat_last_statsjobs_timestamp', REQUEST_TIME);
+}
+
+/**
+ * Implements hook_ppgetstat_stats_job().
+ */
+function ppgetstat_ppgetstat_stats_job($doid) {
+  $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+    array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMITS)
+  )->fetchField();
+  $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+  if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
+    return;
+  }
+
+  $job = array(
+    'generate_urls_callback' => '_ppgetstat_get_code_tracking_urls',
+    'parse_pages_callback' => '_ppgetstat_parse_commits',
+    'do_uid' => $doid,
+    'last_scan' => $last_scan,
+  );
+  return $job;
 }
 
 /**
