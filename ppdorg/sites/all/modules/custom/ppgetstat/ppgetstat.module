@@ -16,6 +16,7 @@ define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', 6 * 30 * 24 * 60 * 60);
 define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 // Commmits type of data.
 define('PPGETSTAT_TYPE_COMMITS', 1);
+
 /**
  * Implements hook_menu().
  */
@@ -642,7 +643,7 @@ function ppgetstat_ppgetstat_stats_job($user_node) {
   $job = array(
     'generate_urls_callback' => '_ppgetstat_get_code_tracking_urls',
     'parse_pages_callback' => '_ppgetstat_parse_commits',
-    'do_uid' => $doid,
+    'doid' => $doid,
     'last_scan' => $last_scan,
   );
   return $job;
@@ -707,13 +708,13 @@ function _ppgetstats_get_all_users() {
  */
 function _ppgetstat_get_code_tracking_urls($data) {
   $last_scan = $data['last_scan'];
-  $do_uid = $data['do_uid'];
+  $doid = $data['doid'];
   // In worst scenario we expect person to do one page (25 commits)
   // of commits every six hours.
   $days_number = round((REQUEST_TIME - $last_scan) / (6 * 60 * 60));
   $urls = array();
   for ($i = 0; $i < $days_number; $i++) {
-    $urls[] = 'https://drupal.org/user/' . $do_uid . '/track/code?page=' . $i;
+    $urls[] = 'https://drupal.org/user/' . $doid . '/track/code?page=' . $i;
   }
   return $urls;
 }
@@ -747,8 +748,12 @@ function _ppgetstat_cron_processItem_dorg_scrapping_jobs() {
       $result = 0;
     }
 
-    if (empty($result)) {
+    if ($result === FALSE) {
       _ppgetstat_cleanup_dorg_scrapping_queue($queue_item->data['id']);
+    }
+
+    if (!empty($result)) {
+      _ppgetstat_save_counters($result, $queue_item->data['data']['doid']);
     }
 
     $dorg_scrapping_queue->deleteItem($queue_item);
@@ -786,7 +791,6 @@ function _ppgetstat_fetch_page($url) {
  * Parse the page for the commits.
  */
 function _ppgetstat_parse_commits($page_content, $data) {
-  $do_uid = $data['do_uid'];
   $timestamp = $data['last_scan'];
   if (empty($page_content)) {
     throw new Exception('Empty page content.');
@@ -818,44 +822,46 @@ function _ppgetstat_parse_commits($page_content, $data) {
     $commits_counter++;
   }
 
+  // FALSE means stop scrapping any other pages anymore.
   if ($commits_counter == 0) {
-    return $commits_counter;
+    return FALSE;
   }
+
+  $commits_counter_array['#type'] = PPGETSTAT_TYPE_COMMITS;
+
+  return $commits_counter_array;
+}
+
+/**
+ * Save counters to database.
+ */
+function _ppgetstat_save_counters($counters_array, $doid) {
+  $type = $counters_array['#type'];
+  unset($counters_array['#type']);
 
   // SQL queries to update counters.
-  $db_records = array();
-  $periods = array_keys($commits_counter_array);
+  $periods = array_keys($counters_array);
   $db_records = db_query('SELECT timestamp, items FROM {ppgetstat} WHERE doid = :doid AND timestamp IN (:periods) AND type = :type',
     array(
-      ':doid' => $do_uid,
+      ':doid' => $doid,
       ':periods' => $periods,
-      ':type' => PPGETSTAT_TYPE_COMMITS,
+      ':type' => $type,
     )
-  )->fetchCol();
-  foreach ($commits_counter_array as $period => &$commits) {
+  )->fetchAllKeyed();
+  foreach ($counters_array as $period => &$items) {
+    $keys = array();
     if (isset($db_records[$period])) {
-      $commits += $db_records[$period];
-      db_query('UPDATE {ppgetstat} SET commits = :commits WHERE doid = :doid AND timestamp = :timestamp AND type = :type', array(
-        array(
-          ':commits' => $commits,
-          ':doid' => $do_uid,
-          ':timestamp' => $period,
-          ':type' => PPGETSTAT_TYPE_COMMITS,
-        ),
-      ));
+      $items += $db_records[$period];
+      $keys = array('doid', 'timestamp', 'type');
     }
-    else {
-      $record = array(
-        'doid' => $do_uid,
-        'items' => $commits,
-        'timestamp' => $period,
-        'type' => PPGETSTAT_TYPE_COMMITS,
-      );
-      drupal_write_record('ppgetstat', $record);
-    }
+    $record = array(
+      'doid' => $doid,
+      'items' => $items,
+      'timestamp' => $period,
+      'type' => $type,
+    );
+    drupal_write_record('ppgetstat', $record, $keys);
   }
-
-  return $commits_counter;
 }
 
 /**

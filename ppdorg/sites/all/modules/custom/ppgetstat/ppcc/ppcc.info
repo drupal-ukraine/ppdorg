@@ -1,0 +1,4 @@
+name = PP Stats Core Commits
+description = Get drupal.org core commits
+core = 7.x
+version = 1.0
