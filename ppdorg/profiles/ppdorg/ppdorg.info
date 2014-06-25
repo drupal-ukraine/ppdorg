@@ -19,6 +19,7 @@ dependencies[] = strongarm
 
 ; Custom modules
 dependencies[] = ppgetstat
+dependencies[] = ppcc
 
 ; Features
 dependencies[] = ppdorg_user_content

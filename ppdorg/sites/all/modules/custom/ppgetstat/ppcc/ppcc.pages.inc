@@ -8,8 +8,8 @@
 /**
  * Page callback to display commits statistics.
  */
-function ppgetstat_commits_page($node) {
-  drupal_set_title(t('Commits statistics'));
+function ppcc_commits_page($node) {
+  drupal_set_title(t('Core Commits statistics'));
 
   if (!isset($node->field_user_id[LANGUAGE_NONE][0]['value'])) {
     return t('Please provide drupal uid of this user.');
@@ -18,7 +18,7 @@ function ppgetstat_commits_page($node) {
   $do_uid = $node->field_user_id[LANGUAGE_NONE][0]['value'];
 
   $db_data = db_query('SELECT timestamp, items FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC',
-    array(':doid' => $do_uid, ':type' => PPGETSTAT_TYPE_COMMITS)
+    array(':doid' => $do_uid, ':type' => PPGETSTAT_TYPE_CORE_COMMITS)
   )->fetchAllKeyed();
 
   $beginning = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
