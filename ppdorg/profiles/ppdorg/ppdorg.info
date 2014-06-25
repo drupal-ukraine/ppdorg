@@ -11,11 +11,12 @@ dependencies[] = dblog
 ; Contrib modules
 dependencies[] = admin_menu_toolbar
 dependencies[] = features
-dependencies[] = properties
 dependencies[] = querypath
 dependencies[] = date
 dependencies[] = diff
 dependencies[] = strongarm
+dependencies[] = queue_uid
+dependencies[] = module_filter
 
 ; Custom modules
 dependencies[] = ppgetstat

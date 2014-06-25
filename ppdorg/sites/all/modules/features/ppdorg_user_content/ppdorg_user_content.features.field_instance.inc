@@ -107,42 +107,6 @@ function ppdorg_user_content_field_default_field_instances() {
     ),
   );
 
-  // Exported field_instance: 'node-user-field_tracking'
-  $field_instances['node-user-field_tracking'] = array(
-    'bundle' => 'user',
-    'deleted' => 0,
-    'description' => '',
-    'display' => array(
-      'default' => array(
-        'label' => 'above',
-        'module' => 'properties',
-        'settings' => array(),
-        'type' => 'properties_formatter_list',
-        'weight' => 1,
-      ),
-      'teaser' => array(
-        'label' => 'above',
-        'settings' => array(),
-        'type' => 'hidden',
-        'weight' => 0,
-      ),
-    ),
-    'entity_type' => 'node',
-    'field_name' => 'field_tracking',
-    'label' => 'Tracking',
-    'required' => 0,
-    'settings' => array(
-      'user_register_form' => FALSE,
-    ),
-    'widget' => array(
-      'active' => 0,
-      'module' => 'properties',
-      'settings' => array(),
-      'type' => 'properties_table',
-      'weight' => 4,
-    ),
-  );
-
   // Exported field_instance: 'node-user-field_user_id'
   $field_instances['node-user-field_user_id'] = array(
     'bundle' => 'user',
