@@ -12,10 +12,8 @@ dependencies[] = dblog
 dependencies[] = admin_menu_toolbar
 dependencies[] = features
 dependencies[] = querypath
-dependencies[] = date
-dependencies[] = diff
 dependencies[] = strongarm
-dependencies[] = queue_uid
+dependencies[] = queue_ui
 dependencies[] = module_filter
 
 ; Custom modules
