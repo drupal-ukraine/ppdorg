@@ -760,7 +760,7 @@ function _ppgetstat_cron_processItem_dorg_scrapping_jobs() {
     }
     catch (Exception $e) {
       watchdog_exception('ppgetstat', $e);
-      $result = 0;
+      $result = FALSE;
     }
 
     if ($result === FALSE) {

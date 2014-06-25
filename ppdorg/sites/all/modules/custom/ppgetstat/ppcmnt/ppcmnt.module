@@ -85,6 +85,10 @@ function _ppcmnt_parse_posts_list($page_content, $data) {
     }
     $type = $type_cell->innerHTML();
 
+    if ($type == 'No content available.') {
+      return FALSE;
+    }
+
     if ($type != 'Issue') {
       continue;
     }
