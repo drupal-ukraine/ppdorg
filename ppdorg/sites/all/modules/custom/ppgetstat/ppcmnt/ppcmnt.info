@@ -1,0 +1,4 @@
+name = PP Stats Comments
+description = Get drupal.org core comments
+core = 7.x
+version = 1.0
