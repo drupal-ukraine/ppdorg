@@ -65,14 +65,18 @@ function _ppcmnt_parse_posts_list($page_content, $data) {
   foreach ($table_rows as $table_row) {
     $cells = $table_row->find('td');
     $i = 0;
+    // Cells is QueryPath type object that implements only IteratorAggregate so
+    // we need to iterate through all items instead of calling $cells[0].
     foreach ($cells as $cell) {
       switch ($i) {
         case 0:
           $type_cell = clone $cell;
           break;
+
         case 1:
           $url_cell = clone $cell;
           break;
+
         case 4:
           $date_cell = clone $cell;
           break;
