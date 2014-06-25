@@ -809,9 +809,9 @@ function _ppgetstat_fetch_page($url) {
   $content = file_get_contents($url);
 
   if ($url != $filepath) {
-    $directory = file_default_scheme() . '://page_cache';
-    file_prepare_directory($directory);
-    file_put_contents($filepath, $content);
+    if (file_put_contents($filepath, $content) === FALSE) {
+      watchdog('ppgetstat', 'Can\'t write cache file %file.', array('%file' => $filepath), WATCHDOG_ERROR);
+    }
   }
 
   $time_post = microtime(TRUE);
@@ -824,9 +824,8 @@ function _ppgetstat_fetch_page($url) {
  * Remove expired cached pages.
  */
 function _ppgetstat_cron_remove_cached_pages() {
-  $cache_directory = realpath(file_default_scheme() . '://page_cache');
-  $files = glob($cache_directory . '*');
-
+  $cache_directory = drupal_realpath(file_default_scheme() . '://page_cache');
+  $files = glob($cache_directory . '/*');
   foreach ($files as $file) {
     if (is_file($file)) {
       if (REQUEST_TIME - filemtime($file) >= PPGETSTAT_PAGE_CACHE_EXPIRY) {
