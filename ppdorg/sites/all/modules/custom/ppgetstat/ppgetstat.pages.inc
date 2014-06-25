@@ -46,3 +46,52 @@ function ppgetstat_commits_page($node) {
 
   return $output;
 }
+
+/**
+ * Form builder for reset stats form.
+ */
+function ppgetstat_reset_form($form, $form_state) {
+
+  $form['markup'] = array(
+    '#type' => 'item',
+    '#markup' => t('Submitting this form will remove all the statistics, queues content and last scan time so you can run scanning from scratch.'),
+  );
+
+  $form['stats_period'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Scanning period'),
+    '#required' => TRUE,
+    '#element_validate' => array('element_validate_integer_positive'),
+    '#default_value' => variable_get('ppgetstat_stats_period', 6 * 30 * 24 * 60 * 60),
+    '#description' => t('For debugging purposes we can shorten period of grabbing stats. By default it is half a year 15552000, but we can set it to one month 2592000.')
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Reset'),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for reset form.
+ */
+function ppgetstat_reset_form_submit($form, $form_state) {
+  variable_set('ppgetstat_stats_period', $form_state['values']['stats_period']);
+
+  variable_del('ppgetstat_last_statsjobs_timestamp');
+  db_query('TRUNCATE TABLE {ppgetstat}');
+
+  $defined_queues = queue_ui_defined_queues();
+  foreach (array('stats_jobs', 'dorg_scrapping') as $queue_name) {
+    $queue = DrupalQueue::get($queue_name);
+    if (isset($defined_queues[$queue_name]['delete'])) {
+      $function = $defined_queues[$queue_name]['delete'];
+      $function($queue);
+    }
+    $queue->deleteQueue();
+  }
+
+  drupal_set_message(t('Statistics resetted.'));
+}

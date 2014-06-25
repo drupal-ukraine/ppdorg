@@ -11,7 +11,7 @@ define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 10);
 // Number of calls to drupal.org per cron run.
 define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 10);
 // If no stats available we scan commits for last half a year.
-define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', 6 * 30 * 24 * 60 * 60);
+define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 6 * 30 * 24 * 60 * 60));
 // We group statistics per week.
 define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 // Commmits type of data.
@@ -48,6 +48,16 @@ function ppgetstat_menu() {
     'access arguments' => array('administer nodes'),
     'weight' => -21,
     'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/config/services/ppgetstat-reset'] = array(
+    'title' => 'Reset all statistics',
+    'description' => 'Clear all statistics.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ppgetstat_reset_form'),
+    'access arguments' => array('administer site configuration'),
+    'weight' => -21,
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'ppgetstat.pages.inc',
   );
 
   return $items;
