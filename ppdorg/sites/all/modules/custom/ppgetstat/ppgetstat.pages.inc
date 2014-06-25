@@ -83,7 +83,10 @@ function ppgetstat_reset_form_submit($form, $form_state) {
   variable_del('ppgetstat_last_statsjobs_timestamp');
   db_query('TRUNCATE TABLE {ppgetstat}');
 
-  $defined_queues = queue_ui_defined_queues();
+  $defined_queues = array();
+  if (function_exists('queue_ui_defined_queues')) {
+    $defined_queues = queue_ui_defined_queues();
+  }
   foreach (array('stats_jobs', 'dorg_scrapping') as $queue_name) {
     $queue = DrupalQueue::get($queue_name);
     if (isset($defined_queues[$queue_name]['delete'])) {
