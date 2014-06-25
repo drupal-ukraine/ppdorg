@@ -16,6 +16,8 @@ define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_sta
 define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 // Commmits type of data.
 define('PPGETSTAT_TYPE_COMMITS', 1);
+// Page cache expiry time.
+define('PPGETSTAT_PAGE_CACHE_EXPIRY', 6 * 60 * 60);
 
 /**
  * Implements hook_menu().
@@ -606,6 +608,9 @@ function ppgetstat_cron() {
 
   // Process items from stats_jobs queue.
   _ppgetstat_cron_processItem_dorg_scrapping_jobs();
+
+  // Remove expired cached pages.
+  _ppgetstat_cron_remove_cached_pages();
 }
 
 /**
@@ -794,11 +799,41 @@ function _ppgetstat_cleanup_dorg_scrapping_queue($id) {
  */
 function _ppgetstat_fetch_page($url) {
   $time_pre = microtime(TRUE);
+
+  $filename = preg_replace("/[^A-Za-z0-9]/", '-', $url) . '.html';
+  $filepath = file_default_scheme() . '://page_cache/' . $filename;
+  if (file_exists($filepath)) {
+    $url = $filepath;
+  }
+
   $content = file_get_contents($url);
+
+  if ($url != $filepath) {
+    $directory = file_default_scheme() . '://page_cache';
+    file_prepare_directory($directory);
+    file_put_contents($filepath, $content);
+  }
+
   $time_post = microtime(TRUE);
   $exec_time = round($time_post - $time_pre, 2);
   watchdog('_ppgetstat_fetch_page', $exec_time . 's ' . $url);
   return $content;
+}
+
+/**
+ * Remove expired cached pages.
+ */
+function _ppgetstat_cron_remove_cached_pages() {
+  $cache_directory = realpath(file_default_scheme() . '://page_cache');
+  $files = glob($cache_directory . '*');
+
+  foreach ($files as $file) {
+    if (is_file($file)) {
+      if (REQUEST_TIME - filemtime($file) >= PPGETSTAT_PAGE_CACHE_EXPIRY) {
+        unlink($file);
+      }
+    }
+  }
 }
 
 /**
