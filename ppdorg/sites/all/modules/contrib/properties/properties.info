@@ -1,8 +1,0 @@
-name = Dynamic Properties
-description = Provides a dynamic property field that can contain an unlimited number of attribute value pairs.
-core = 7.x
-files[] = properties.module
-files[] = properties.test
-dependencies[] = properties_sql
-configure = admin/config/content/properties
-

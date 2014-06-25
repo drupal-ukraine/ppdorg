@@ -1,8 +1,0 @@
-name = Dynamic Properties Template
-description = This module implements the template functionality for properties.
-core = 7.x
-files[] = properties_template.module
-files[] = properties_template.admin.inc
-files[] = properties_template.test
-dependencies[] = properties
-configure = admin/config/content/properties/templates
