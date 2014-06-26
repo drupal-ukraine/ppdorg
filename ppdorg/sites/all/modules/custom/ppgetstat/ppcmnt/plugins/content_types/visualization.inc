@@ -30,7 +30,7 @@ function ppcmnt_visualization_content_type_render($subtype, $conf, $panel_args, 
   $block->title = t('Comments');
 
   drupal_add_js(array('ppcmnt' => array('data' => base_path() . 'node/' . $node->nid . '/comments/data.tsv')), 'setting');
-  drupal_add_js('http://d3js.org/d3.v3.js');
+  _ppgetstat_add_d3_js();
   drupal_add_js(drupal_get_path('module', 'ppcmnt') . '/plugins/content_types/visualization.js');
   drupal_add_css(drupal_get_path('module', 'ppcmnt') . '/plugins/content_types/visualization.css');
 

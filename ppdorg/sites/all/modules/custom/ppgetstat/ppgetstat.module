@@ -411,3 +411,14 @@ function _ppgetstat_parse_commits_page_date($original_string) {
 function ppgetstat_commits_access($node) {
   return ($node->type == PPGETSTAT_USER_NODE_TYPE);
 }
+
+/**
+ * Add d3.js only once.
+ */
+function _ppgetstat_add_d3_js() {
+  $added = &drupal_static(__FUNCTION__);
+  if (!$added) {
+    drupal_add_js('http://d3js.org/d3.v3.js');
+    $added = TRUE;
+  }
+}
