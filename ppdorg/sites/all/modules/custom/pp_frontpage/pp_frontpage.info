@@ -1,0 +1,4 @@
+name = PP Frontpage Panes
+description = Module for frontpage custom panes
+core = 7.x
+version = 1.0
