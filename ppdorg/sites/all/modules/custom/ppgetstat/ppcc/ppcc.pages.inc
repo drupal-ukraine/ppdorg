@@ -11,6 +11,43 @@
 function ppcc_commits_page($node) {
   drupal_set_title(t('Core Commits statistics'));
 
+  $table_data = _ppcc_commits_data($node);
+
+  if (is_string($table_data)) {
+    return $table_data;
+  }
+
+  $variables = array(
+    'header' => array(t('Date'), t('Commits')),
+    'rows' => $table_data,
+  );
+  $output = theme('table', $variables);
+
+  return $output;
+}
+
+
+/**
+ * Print stats for visualization.
+ */
+function ppccc_commits_tsv_source($node) {
+  $data = _ppcc_commits_data($node);
+  print t('date	close') . "\n";
+  if (is_string($data)) {
+    return;
+  }
+
+  foreach ($data as $value) {
+    list($date, $number) = $value;
+    print str_replace(' ', '-', $date) . '	' . $number . "\n";
+  }
+  drupal_exit();
+}
+
+/**
+ * Retrieve the core commits data.
+ */
+function _ppcc_commits_data($node) {
   if (!isset($node->field_user_id[LANGUAGE_NONE][0]['value'])) {
     return t('Please provide drupal uid of this user.');
   }
@@ -38,11 +75,5 @@ function ppcc_commits_page($node) {
     $timestamp += PPGETSTAT_TIME_PERIOD_GRANULARITY;
   }
 
-  $variables = array(
-    'header' => array(t('Date'), t('Commits')),
-    'rows' => $table_data,
-  );
-  $output = theme('table', $variables);
-
-  return $output;
+  return $table_data;
 }

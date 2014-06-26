@@ -59,35 +59,6 @@ function ppdorg_user_content_default_page_manager_handlers() {
   $display->content = array();
   $display->panels = array();
     $pane = new stdClass();
-    $pane->pid = 'new-44f45882-2b86-456b-b2e7-d3ee92070b7d';
-    $pane->panel = 'middle';
-    $pane->type = 'node_content';
-    $pane->subtype = 'node_content';
-    $pane->shown = FALSE;
-    $pane->access = array();
-    $pane->configuration = array(
-      'links' => 1,
-      'no_extras' => 1,
-      'override_title' => 0,
-      'override_title_text' => '',
-      'identifier' => '',
-      'link' => 1,
-      'leave_node_title' => 0,
-      'build_mode' => 'teaser',
-      'context' => 'argument_entity_id:node_1',
-    );
-    $pane->cache = array();
-    $pane->style = array(
-      'settings' => NULL,
-    );
-    $pane->css = array();
-    $pane->extras = array();
-    $pane->position = 0;
-    $pane->locks = array();
-    $pane->uuid = '44f45882-2b86-456b-b2e7-d3ee92070b7d';
-    $display->content['new-44f45882-2b86-456b-b2e7-d3ee92070b7d'] = $pane;
-    $display->panels['middle'][0] = 'new-44f45882-2b86-456b-b2e7-d3ee92070b7d';
-    $pane = new stdClass();
     $pane->pid = 'new-297a6767-5461-4c35-a4bc-239217190770';
     $pane->panel = 'middle';
     $pane->type = 'visualization';
@@ -101,13 +72,32 @@ function ppdorg_user_content_default_page_manager_handlers() {
     );
     $pane->css = array();
     $pane->extras = array();
-    $pane->position = 1;
+    $pane->position = 0;
     $pane->locks = array();
     $pane->uuid = '297a6767-5461-4c35-a4bc-239217190770';
     $display->content['new-297a6767-5461-4c35-a4bc-239217190770'] = $pane;
-    $display->panels['middle'][1] = 'new-297a6767-5461-4c35-a4bc-239217190770';
+    $display->panels['middle'][0] = 'new-297a6767-5461-4c35-a4bc-239217190770';
+    $pane = new stdClass();
+    $pane->pid = 'new-36d04670-5ad8-4625-9bae-966b153b0e58';
+    $pane->panel = 'middle';
+    $pane->type = 'ppcc_visualization';
+    $pane->subtype = 'ppcc_visualization';
+    $pane->shown = TRUE;
+    $pane->access = array();
+    $pane->configuration = array();
+    $pane->cache = array();
+    $pane->style = array(
+      'settings' => NULL,
+    );
+    $pane->css = array();
+    $pane->extras = array();
+    $pane->position = 1;
+    $pane->locks = array();
+    $pane->uuid = '36d04670-5ad8-4625-9bae-966b153b0e58';
+    $display->content['new-36d04670-5ad8-4625-9bae-966b153b0e58'] = $pane;
+    $display->panels['middle'][1] = 'new-36d04670-5ad8-4625-9bae-966b153b0e58';
   $display->hide_title = PANELS_TITLE_FIXED;
-  $display->title_pane = 'new-44f45882-2b86-456b-b2e7-d3ee92070b7d';
+  $display->title_pane = '0';
   $handler->conf['display'] = $display;
   $export['node_view_panel_context'] = $handler;
 
