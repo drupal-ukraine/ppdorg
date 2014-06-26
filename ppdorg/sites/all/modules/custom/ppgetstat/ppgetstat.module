@@ -33,6 +33,16 @@ function ppgetstat_menu() {
     'type' => MENU_LOCAL_TASK,
     'file' => 'ppgetstat.pages.inc',
   );
+
+  $items['node/%node/commits/data.tsv'] = array(
+    'title' => 'Commits Tsv',
+    'description' => 'Commits statistics.',
+    'page callback' => 'ppgetstat_commits_tsv_source',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'file' => 'ppgetstat.pages.inc',
+  );
+
   $items['admin/config/services/ppgetstat-reset'] = array(
     'title' => 'Reset all statistics',
     'description' => 'Clear all statistics.',
@@ -420,5 +430,14 @@ function _ppgetstat_add_d3_js() {
   if (!$added) {
     drupal_add_js('http://d3js.org/d3.v3.js');
     $added = TRUE;
+  }
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function ppgetstat_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'ctools' && $plugin_type == 'content_types') {
+    return 'plugins/content_types';
   }
 }
