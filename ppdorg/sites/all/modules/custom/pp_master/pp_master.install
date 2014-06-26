@@ -4,3 +4,10 @@
  * @file
  * PP Master update hooks.
  */
+
+/**
+ * Apply panels page for user node.
+ */
+function pp_master_update_7000() {
+  features_revert_module('ppdorg_user_content');
+}
