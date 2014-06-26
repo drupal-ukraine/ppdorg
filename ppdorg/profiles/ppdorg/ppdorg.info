@@ -25,3 +25,5 @@ dependencies[] = ppcmnt
 ; Features
 dependencies[] = ppdorg_user_content
 dependencies[] = ppgetstat_variables
+
+dependencies[] = pp_master

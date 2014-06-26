@@ -1,0 +1,4 @@
+name = PP Master
+description = Module for hook_updates
+core = 7.x
+version = 1.0
