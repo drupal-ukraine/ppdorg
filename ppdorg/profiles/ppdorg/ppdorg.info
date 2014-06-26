@@ -15,6 +15,7 @@ dependencies[] = querypath
 dependencies[] = strongarm
 dependencies[] = queue_ui
 dependencies[] = module_filter
+dependencies[] = panels
 
 ; Custom modules
 dependencies[] = ppgetstat

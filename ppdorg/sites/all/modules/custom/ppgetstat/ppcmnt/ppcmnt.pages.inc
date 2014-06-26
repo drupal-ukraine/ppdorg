@@ -11,6 +11,42 @@
 function ppcmnt_comments_page($node) {
   drupal_set_title(t('Comments statistics'));
 
+  $table_data = _pppcmnt_load_the_data($node);
+
+  if (is_string($table_data)) {
+    return $table_data;
+  }
+
+  $variables = array(
+    'header' => array(t('Date'), t('Comments')),
+    'rows' => $table_data,
+  );
+  $output = theme('table', $variables);
+
+  return $output;
+}
+
+/**
+ * Print stats for visualization.
+ */
+function ppcmnt_comments_tsv_source($node) {
+  $data = _pppcmnt_load_the_data($node);
+  print t('date	close') . "\n";
+  if (is_string($data)) {
+    return;
+  }
+
+  foreach ($data as $value) {
+    list($date, $number) = $value;
+    print str_replace(' ', '-', $date) . '	' . $number . "\n";
+  }
+  drupal_exit();
+}
+
+/**
+ * Load the stats data for this user.
+ */
+function _pppcmnt_load_the_data($node) {
   if (!isset($node->field_user_id[LANGUAGE_NONE][0]['value'])) {
     return t('Please provide drupal uid of this user.');
   }
@@ -38,11 +74,5 @@ function ppcmnt_comments_page($node) {
     $timestamp += PPGETSTAT_TIME_PERIOD_GRANULARITY;
   }
 
-  $variables = array(
-    'header' => array(t('Date'), t('Comments')),
-    'rows' => $table_data,
-  );
-  $output = theme('table', $variables);
-
-  return $output;
+  return $table_data;
 }

@@ -186,5 +186,23 @@ function ppcmnt_menu() {
     'file' => 'ppcmnt.pages.inc',
   );
 
+  $items['node/%node/comments/data.tsv'] = array(
+    'title' => 'Comments Tsv',
+    'description' => 'Comments statistics.',
+    'page callback' => 'ppcmnt_comments_tsv_source',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'file' => 'ppcmnt.pages.inc',
+  );
+
   return $items;
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function ppcmnt_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'ctools' && $plugin_type == 'content_types') {
+    return 'plugins/content_types';
+  }
 }
