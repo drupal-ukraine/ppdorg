@@ -114,5 +114,24 @@ function ppcc_menu() {
     'file' => 'ppcc.pages.inc',
   );
 
+  $items['node/%node/core_commits/data.tsv'] = array(
+    'title' => 'Core Commits Tsv',
+    'description' => 'Core Commits statistics.',
+    'page callback' => 'ppccc_commits_tsv_source',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'file' => 'ppcc.pages.inc',
+  );
+
   return $items;
+}
+
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function ppcc_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'ctools' && $plugin_type == 'content_types') {
+    return 'plugins/content_types';
+  }
 }
