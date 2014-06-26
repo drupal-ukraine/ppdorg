@@ -26,7 +26,7 @@ function ppcmnt_visualization_content_type_render($subtype, $conf, $panel_args, 
   }
 
   $block = new stdClass();
-  $block->module = 'user-profile';
+  $block->module = 'ppcmnt';
   $block->title = t('Comments');
 
   drupal_add_js(array('ppcmnt' => array('data' => base_path() . 'node/' . $node->nid . '/comments/data.tsv')), 'setting');
