@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Visualization of user Comments.
+ * Visualization of user Core Commits.
  */
 
 /**
@@ -17,7 +17,7 @@ $plugin = array(
 );
 
 /**
- * Render the visualization for comments.
+ * Render the visualization for core commits.
  */
 function ppcc_ppcc_visualization_content_type_render($subtype, $conf, $panel_args, $context) {
   $node = isset($context->data) ? clone($context->data) : NULL;
