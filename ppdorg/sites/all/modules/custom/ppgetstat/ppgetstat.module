@@ -469,3 +469,28 @@ function ppgetstat_ctools_plugin_directory($owner, $plugin_type) {
     return 'plugins/content_types';
   }
 }
+
+/**
+ * Implements hook_node_insert().
+ *
+ * Trigger scanning jobs for newly created user.
+ */
+function ppgetstat_node_insert($node) {
+  if ($node->type != PPGETSTAT_USER_NODE_TYPE) {
+    return;
+  }
+  if (!isset($node->field_user_id[LANGUAGE_NONE][0]['value'])) {
+    return;
+  }
+  $queue = DrupalQueue::get('stats_jobs');
+  // Invoke hook so all modules can use it to provide jobs.
+  foreach (module_implements('ppgetstat_stats_job') as $module) {
+    $job = module_invoke($module, 'ppgetstat_stats_job', $node);
+    if (!empty($job)) {
+      $queue->createItem($job);
+    }
+  }
+
+  // Queue scanning jobs.
+  _ppgetstat_cron_processItem_stats_jobs();
+}
