@@ -207,6 +207,29 @@ function _ppgetstats_get_all_users() {
   return array();
 }
 
+
+/**
+ * Get the user's node link by drupal.org id.
+ */
+function _ppgetstat_get_node_link_by_doid($doid) {
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', PPGETSTAT_USER_NODE_TYPE)
+    ->propertyCondition('status', 1)
+    ->fieldCondition('field_user_id', 'value', $doid)
+    ->execute();
+  if (empty($result)) {
+    return;
+  }
+  $result_keys = array_keys($result['node']);
+  $nid = reset($result_keys);
+
+  $node = node_load($nid);
+
+  return l($node->title, 'node/' . $nid);
+}
+
 /**
  * Generate list of URLs for scanning the code.
  */

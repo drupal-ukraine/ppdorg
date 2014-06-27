@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Visualization of user Core Commits.
+ * Display queue stats.
  */
 
 /**
