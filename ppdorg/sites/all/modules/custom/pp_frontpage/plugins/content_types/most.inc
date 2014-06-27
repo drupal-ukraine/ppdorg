@@ -33,7 +33,9 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
 
   $query = 'SELECT doid, SUM(items) as counter  FROM {ppgetstat} '
     . 'WHERE type = :type AND timestamp > :timestamp '
-    . 'ORDER BY counter LIMIT 0,5';
+    . 'GROUP BY doid '
+    . 'ORDER BY counter '
+    . 'DESC LIMIT 0,5';
 
   $last_thee_months = REQUEST_TIME - 3 * 30 * 24 * 60 * 60;
 
@@ -44,13 +46,13 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
   );
   $table_header = array(t('user'), t('counter'));
   foreach ($types as $title => $data_type) {
-    $most_commits = db_query($query, array(
+    $query_results = db_query($query, array(
       ':type' => $data_type,
       ':timestamp' => $last_thee_months,
     ))->fetchAllKeyed();
 
     $table_data = array();
-    foreach ($most_commits as $doid => $counter) {
+    foreach ($query_results as $doid => $counter) {
       $table_data[] = array(_ppgetstat_get_node_link_by_doid($doid), $counter);
     }
 
