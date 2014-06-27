@@ -11,3 +11,10 @@
 function pp_master_update_7000() {
   features_revert_module('ppdorg_user_content');
 }
+
+/**
+ * Enable frontpage.
+ */
+function pp_master_update_7001() {
+  module_enable(array('pp_frontpage', 'ppdorg_frontpage'));
+}

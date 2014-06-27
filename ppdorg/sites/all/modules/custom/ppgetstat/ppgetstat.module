@@ -74,6 +74,11 @@ function ppgetstat_get_id_by_nick($nick) {
   $request = parse_url($nick_data->redirect_url);
   $id_data = explode("/", $request['path']);
   $id = $id_data[2];
+
+  if (!is_numeric($id)) {
+    return;
+  }
+
   cache_set('ppgetstat_nick_' . $nick, $id);
 
   return $id;
@@ -200,6 +205,29 @@ function _ppgetstats_get_all_users() {
     return node_load_multiple($nids);
   }
   return array();
+}
+
+
+/**
+ * Get the user's node link by drupal.org id.
+ */
+function _ppgetstat_get_node_link_by_doid($doid) {
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', PPGETSTAT_USER_NODE_TYPE)
+    ->propertyCondition('status', 1)
+    ->fieldCondition('field_user_id', 'value', $doid)
+    ->execute();
+  if (empty($result)) {
+    return;
+  }
+  $result_keys = array_keys($result['node']);
+  $nid = reset($result_keys);
+
+  $node = node_load($nid);
+
+  return l($node->title, 'node/' . $nid);
 }
 
 /**
@@ -440,4 +468,29 @@ function ppgetstat_ctools_plugin_directory($owner, $plugin_type) {
   if ($owner == 'ctools' && $plugin_type == 'content_types') {
     return 'plugins/content_types';
   }
+}
+
+/**
+ * Implements hook_node_insert().
+ *
+ * Trigger scanning jobs for newly created user.
+ */
+function ppgetstat_node_insert($node) {
+  if ($node->type != PPGETSTAT_USER_NODE_TYPE) {
+    return;
+  }
+  if (!isset($node->field_user_id[LANGUAGE_NONE][0]['value'])) {
+    return;
+  }
+  $queue = DrupalQueue::get('stats_jobs');
+  // Invoke hook so all modules can use it to provide jobs.
+  foreach (module_implements('ppgetstat_stats_job') as $module) {
+    $job = module_invoke($module, 'ppgetstat_stats_job', $node);
+    if (!empty($job)) {
+      $queue->createItem($job);
+    }
+  }
+
+  // Queue scanning jobs.
+  _ppgetstat_cron_processItem_stats_jobs();
 }

@@ -4,8 +4,9 @@ version = 1.0
 core = 7.x
 dependencies[] = block
 dependencies[] = field_ui
-dependencies[] = taxonomy
 dependencies[] = list
+dependencies[] = menu
+dependencies[] = contextual
 dependencies[] = dblog
 
 ; Contrib modules
@@ -16,6 +17,8 @@ dependencies[] = strongarm
 dependencies[] = queue_ui
 dependencies[] = module_filter
 dependencies[] = panels
+dependencies[] = views
+dependencies[] = views_ui
 
 ; Custom modules
 dependencies[] = ppgetstat
@@ -25,5 +28,6 @@ dependencies[] = ppcmnt
 ; Features
 dependencies[] = ppdorg_user_content
 dependencies[] = ppgetstat_variables
+dependencies[] = ppdorg_frontpage
 
 dependencies[] = pp_master
