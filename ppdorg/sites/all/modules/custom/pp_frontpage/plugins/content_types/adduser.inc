@@ -89,7 +89,7 @@ function pp_frontpage_adduser_validate($form, &$form_state) {
       ))->fetchField();
     if (!empty($exists)) {
       form_set_error('doid', t('User !link already exists', array(
-        '!link' => l('UId ' . $uid, 'node/' . $exists),
+        '!link' => l(t('User with Id=@uid already exists', array('@uid' => $uid)), 'node/' . $exists),
       )));
       return;
     }
