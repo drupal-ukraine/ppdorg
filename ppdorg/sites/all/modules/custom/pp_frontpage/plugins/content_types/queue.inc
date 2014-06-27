@@ -25,12 +25,12 @@ function pp_frontpage_queue_content_type_render($subtype, $conf, $panel_args, $c
 
   $output = '';
   $queue = DrupalQueue::get('dorg_scrapping');
-  $output .= t('%number urls in scanning queue',
+  $output .= t('%number urls in drupal.org scanning queue',
     array('%number' => $queue->numberOfItems())) . '<br/>';
 
   $dir = drupal_realpath('public://page_cache');
   $files = scandir($dir);
-  $output .= t('%number of cached urls', array('%number' => count($files))) . '<br/>';
+  $output .= t('%number cached urls', array('%number' => count($files))) . '<br/>';
 
   $block->content = $output;
   return $block;

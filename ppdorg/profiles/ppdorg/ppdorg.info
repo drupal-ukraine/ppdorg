@@ -6,6 +6,7 @@ dependencies[] = block
 dependencies[] = field_ui
 dependencies[] = list
 dependencies[] = menu
+dependencies[] = contextual
 dependencies[] = dblog
 
 ; Contrib modules
