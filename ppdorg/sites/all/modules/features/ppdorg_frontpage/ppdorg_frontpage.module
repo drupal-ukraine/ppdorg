@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the PPDORG frontpage feature.
+ */
+
+include_once 'ppdorg_frontpage.features.inc';
