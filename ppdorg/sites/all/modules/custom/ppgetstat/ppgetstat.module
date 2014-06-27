@@ -74,6 +74,11 @@ function ppgetstat_get_id_by_nick($nick) {
   $request = parse_url($nick_data->redirect_url);
   $id_data = explode("/", $request['path']);
   $id = $id_data[2];
+
+  if (!is_numeric($id)) {
+    return;
+  }
+
   cache_set('ppgetstat_nick_' . $nick, $id);
 
   return $id;
