@@ -36,7 +36,7 @@ function pp_frontpage_adduser_content_type_render($subtype, $conf, $panel_args, 
 function pp_frontpage_adduser($form, $form_state) {
   $form['nickname'] = array(
     '#type' => 'textfield',
-    '#title' => t('Username'),
+    '#title' => t('Drupal.org username'),
   );
 
   $form['submit'] = array(
