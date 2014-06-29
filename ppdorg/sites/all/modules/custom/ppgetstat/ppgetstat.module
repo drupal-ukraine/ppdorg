@@ -76,12 +76,33 @@ function ppgetstat_get_id_by_nick($nick) {
   $id = $id_data[2];
 
   if (!is_numeric($id)) {
-    return;
+    return FALSE;
   }
 
   cache_set('ppgetstat_nick_' . $nick, $id);
 
   return $id;
+}
+
+/**
+ * Get drupal.org user Nickname using uid and https://www.drupal.org/user/.
+ *
+ * @param string|int $id
+ *   User drupal.org Id.
+ *
+ * @return bool|string
+ *   User drupal.org nickname or FALSE if not user was found.
+ */
+function ppgetstat_get_nick_by_id($id) {
+  $userdata = drupal_http_request('https://www.drupal.org/user/' . $id);
+
+  if ($userdata->code > 400) {
+    return FALSE;
+  }
+
+  preg_match('/\<h1 id\=\"page-title\" class\=\"title\"\>(.+)\<\/h1\>/', $userdata->data, $match);
+
+  return (!empty($match[1]) ? $match[1] : FALSE);
 }
 
 /**

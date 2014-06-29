@@ -58,7 +58,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
     $output .= theme('table', array('header' => $table_header, 'rows' => $table_data));
   }
 
-  cache_set(__FUNCTION__, $output);
+  cache_set(__FUNCTION__, $output, 'cache', CACHE_TEMPORARY);
 
   $block->content = $output;
   return $block;
