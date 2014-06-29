@@ -36,13 +36,8 @@ function pp_frontpage_adduser_content_type_render($subtype, $conf, $panel_args, 
 function pp_frontpage_adduser($form, $form_state) {
   $form['nickname'] = array(
     '#type' => 'textfield',
-    '#title' => t('Drupal.org username'),
-    '#suffix' => t('or use user ID on Drupal.org'),
-  );
-
-  $form['doid'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Drupal.org user UID'),
+    '#title' => t('Drupal.org username or user ID'),
+    '#required' => TRUE,
   );
 
   $form['submit'] = array(
@@ -57,7 +52,30 @@ function pp_frontpage_adduser($form, $form_state) {
  * Validation handler.
  */
 function pp_frontpage_adduser_validate($form, &$form_state) {
-  if (!empty($form_state['values']['nickname'])) {
+  if (is_numeric($form_state['values']['nickname'])) {
+    $uid = $form_state['values']['nickname'];
+
+    $exists = db_query('SELECT nid FROM {node} LEFT JOIN {field_data_field_user_id} AS fuid ON node.nid = fuid.entity_id WHERE type = :type AND fuid.field_user_id_value = :uid',
+      array(
+        ':type' => PPGETSTAT_USER_NODE_TYPE,
+        ':uid' => $uid,
+      ))->fetchField();
+    if (!empty($exists)) {
+      form_set_error('doid', t('User !link already exists', array(
+        '!link' => l(t('User with Id=@uid already exists', array('@uid' => $uid)), 'node/' . $exists),
+      )));
+      return;
+    }
+
+    $nickname = ppgetstat_get_nick_by_id($uid);
+    if (empty($nickname)) {
+      form_set_error('doid', t('There is no such user ID on drupal.org'));
+    }
+
+    $form_state['values']['nickname'] = $nickname;
+    $form_state['values']['doid'] = $uid;
+  }
+  elseif (is_string($form_state['values']['nickname'])) {
     $nickname = $form_state['values']['nickname'];
 
     $exists = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title',
@@ -78,28 +96,6 @@ function pp_frontpage_adduser_validate($form, &$form_state) {
     }
 
     $form_state['values']['doid'] = $doid;
-  }
-  else {
-    $uid = $form_state['values']['doid'];
-
-    $exists = db_query('SELECT nid FROM {node} LEFT JOIN {field_data_field_user_id} AS fuid ON node.nid = fuid.entity_id WHERE type = :type AND fuid.field_user_id_value = :uid',
-      array(
-        ':type' => PPGETSTAT_USER_NODE_TYPE,
-        ':uid' => $uid,
-      ))->fetchField();
-    if (!empty($exists)) {
-      form_set_error('doid', t('User !link already exists', array(
-        '!link' => l(t('User with Id=@uid already exists', array('@uid' => $uid)), 'node/' . $exists),
-      )));
-      return;
-    }
-
-    $nickname = ppgetstat_get_nick_by_id($uid);
-    if (empty($nickname)) {
-      form_set_error('doid', t('There is no such user ID on drupal.org'));
-    }
-
-    $form_state['values']['nickname'] = $nickname;
   }
 
   return $form;
