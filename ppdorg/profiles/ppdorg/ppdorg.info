@@ -24,6 +24,7 @@ dependencies[] = views_ui
 dependencies[] = ppgetstat
 dependencies[] = ppcc
 dependencies[] = ppcmnt
+dependencies[] = pp_frontpage
 
 ; Features
 dependencies[] = ppdorg_user_content
