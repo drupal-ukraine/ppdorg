@@ -18,3 +18,12 @@ function pp_master_update_7000() {
 function pp_master_update_7001() {
   module_enable(array('pp_frontpage', 'ppdorg_frontpage'));
 }
+
+/**
+ * Remove Core Commits statistics.
+ */
+function pp_master_update_7002() {
+  db_query('DELETE FROM {ppgetstat} WHERE type = :type', array(
+    ':type' => PPGETSTAT_TYPE_CORE_COMMITS,
+  ));
+}
