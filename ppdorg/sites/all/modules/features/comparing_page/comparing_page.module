@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Comparing page feature.
+ */
+
+include_once 'comparing_page.features.inc';

@@ -102,7 +102,7 @@ function _ppcmnt_parse_posts_list($page_content, $data) {
       throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $date_string)));
     }
 
-    if ($last_change_timestamp < $last_scan) {
+    if ($last_change_timestamp <= $last_scan) {
       return FALSE;
     }
 

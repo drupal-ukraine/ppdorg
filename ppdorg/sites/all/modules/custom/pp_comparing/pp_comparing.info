@@ -1,0 +1,8 @@
+name = PP comparing
+description = Create a page to compare users stats
+core = 7.x
+version = 1.0
+
+dependency[] = ppcc
+dependency[] = ppcmnt
+dependency[] = comparing_page

@@ -72,7 +72,7 @@ function _ppcc_parse_core_commits($page_content, $data) {
     }
 
     // Stop scrapping any other pages as they are too old.
-    if ($commit_timestamp < $last_scan) {
+    if ($commit_timestamp <= $last_scan) {
       return FALSE;
     }
 

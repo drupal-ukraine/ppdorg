@@ -372,7 +372,7 @@ function _ppgetstat_cron_remove_cached_pages() {
  * Parse the page for the commits.
  */
 function _ppgetstat_parse_commits($page_content, $data) {
-  $timestamp = $data['last_scan'];
+  $last_scan = $data['last_scan'];
   if (empty($page_content)) {
     throw new Exception('Empty page content.');
   }
@@ -391,7 +391,7 @@ function _ppgetstat_parse_commits($page_content, $data) {
   foreach ($strings as $string) {
     $commit_timestamp = _ppgetstat_parse_commits_page_date($string->html());
 
-    if ($commit_timestamp < $timestamp) {
+    if ($commit_timestamp <= $last_scan) {
       break;
     }
 
