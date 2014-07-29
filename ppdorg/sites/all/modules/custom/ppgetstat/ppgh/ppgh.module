@@ -6,7 +6,7 @@
  */
 
 // Github commmits type of data.
-define('PPGETSTAT_TYPE_GITHUB_COMMITS', 4);
+define('PPGETSTAT_TYPE_GITHUB_ACTIVITY', 4);
 
 /**
  * Implements hook_ppgetstat_stats_job().
@@ -17,7 +17,7 @@ function ppgh_ppgetstat_stats_job($user_node) {
     $github_username = $user_node->field_github_username[LANGUAGE_NONE][0]['value'];
 
     $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
-      array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_CORE_COMMITS)
+      array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_GITHUB_ACTIVITY)
     )->fetchField();
     $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
 
@@ -26,11 +26,10 @@ function ppgh_ppgetstat_stats_job($user_node) {
     }
 
     $job = array(
-      'generate_urls_callback' => '_ppgh_get_github_commits_tracking_url',
-      'parse_pages_callback' => '_ppgh_parse_github_commits',
+      'generate_urls_callback' => '_ppgh_get_github_activity_tracking_url',
+      'parse_pages_callback' => '_ppgh_parse_github_activity',
       'doid' => $doid,
       'github_username' => $github_username,
-      'do_nickname' => $user_node->title,
       'last_scan' => $last_scan,
     );
 
@@ -39,17 +38,17 @@ function ppgh_ppgetstat_stats_job($user_node) {
 }
 
 /**
- * Build url for scanning github commits.
+ * Build url for scanning github activity.
  */
-function _ppgh_get_github_commits_tracking_url($data) {
+function _ppgh_get_github_activity_tracking_url($data) {
   $url[] = 'https://github.com/users/' . $data['github_username'] . '/contributions_calendar_data';
   return $url;
 }
 
 /**
- * Parse github commits data page.
+ * Parse github activity data page.
  */
-function _ppgh_parse_github_commits($page_content, $data) {
+function _ppgh_parse_github_activity($page_content, $data) {
   $last_scan = $data['last_scan'];
 
   if (empty($page_content)) {
@@ -78,7 +77,7 @@ function _ppgh_parse_github_commits($page_content, $data) {
     return $commits_counter;
   }
 
-  $commits_counter_array['#type'] = PPGETSTAT_TYPE_GITHUB_COMMITS;
+  $commits_counter_array['#type'] = PPGETSTAT_TYPE_GITHUB_ACTIVITY;
 
   return $commits_counter_array;
 }
