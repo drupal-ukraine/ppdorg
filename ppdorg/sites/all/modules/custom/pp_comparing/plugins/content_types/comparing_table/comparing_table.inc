@@ -19,7 +19,7 @@ $plugin = array(
  * Render the Comparing settings form and comparing table.
  */
 function pp_comparing_comparing_table_content_type_render($subtype, $conf, $panel_args, $context) {
-  $block = new stdClass;
+  $block = new stdClass();
   $block->module = 'pp_comparing';
   $block->title = t('Comparing of users');
 
@@ -42,13 +42,18 @@ function pp_comparing_comparing_table_content_type_render($subtype, $conf, $pane
   $data = _pp_comparing_users_data($users, $types);
 
   $header = array(t('Date'));
-  foreach(reset($data) as $key => $field) {
+  foreach (reset($data) as $key => $field) {
     if (is_numeric($key)) {
       $header[] = _ppgetstat_get_node_link_by_doid($key);
     }
   }
 
-  $block->content = array('form' => $form, 'table' => array('#markup' => theme('table', array('rows' => $data, 'header' => $header))));
+  $block->content = array(
+    'form' => $form,
+    'table' => array(
+      '#markup' => theme('table', array('rows' => $data, 'header' => $header))
+    )
+  );
 
   return $block;
 }
@@ -59,7 +64,7 @@ function pp_comparing_comparing_table_content_type_render($subtype, $conf, $pane
 function pp_comparing_comparing_table_settings_form($form, &$form_state) {
   $users = node_load_multiple(array(), array('type' => 'user'));
 
-  $users_options= array();
+  $users_options = array();
 
   foreach ($users as $user) {
     $users_options[$user->nid] = $user->title;

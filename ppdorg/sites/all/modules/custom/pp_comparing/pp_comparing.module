@@ -30,16 +30,18 @@ function pp_comparing_ctools_plugin_directory($owner, $plugin_type) {
   }
 }
 
+/**
+ * Page callback for tsv for d3 lib.
+ *
+ * @param string $users
+ *   User node nids separated by comma.
+ */
 function pp_comparing_users($users) {
-  $users = explode(',', $users);
-
   if (!empty($_GET['types'])) {
     $types = $_GET['types'];
   }
-  else {
-    $types = NULL;
-  }
 
+  $users = explode(',', $users);
   $data = _pp_comparing_users_data($users, $types);
 
   if (is_string($data)) {
@@ -57,16 +59,28 @@ function pp_comparing_users($users) {
     unset($value['timestamp']);
     print str_replace(' ', '-', $date) . '	' . implode('	', $value) . "\n";
   }
+
   drupal_exit();
 }
 
+/**
+ * Get structured map of users stats by granular timestamp.
+ *
+ * @param array $users
+ *   List of user nodes nid.
+ * @param null|string $types
+ *   List of stats type.
+ *
+ * @return array
+ *   Array of statistics per week.
+ */
 function _pp_comparing_users_data($users, $types = NULL) {
   $table_data = array();
   $users = node_load_multiple($users);
 
   foreach ($users as $user_node) {
     if (empty($user_node->field_user_id[LANGUAGE_NONE][0]['value'])) {
-      watchdog('warning', t('User @user_name doesn\'t have attached d.rog UID!', array('@user_name' => $user_node->title)));
+      watchdog('warning', 'User ' . $user_node->title . ' doesn\'t have attached d.rog UID!');
       continue;
     }
 
