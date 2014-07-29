@@ -1,0 +1,11 @@
+name = Comparing page
+description = Contains comparing panel with related panes.
+core = 7.x
+package = PPDORG
+version = 7.x-1.0
+project = comparing_page
+dependencies[] = ctools
+dependencies[] = page_manager
+features[ctools][] = page_manager:pages_default:1
+features[features_api][] = api:2
+features[page_manager_pages][] = users_stats_comparing

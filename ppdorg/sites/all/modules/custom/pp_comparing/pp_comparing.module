@@ -1,0 +1,106 @@
+<?php
+
+/**
+ * @file
+ * Drupal.org user's statistics comparing module.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function pp_comparing_menu() {
+  $items = array();
+
+  $items['comparing/%/data.tsv'] = array(
+    'title' => 'Compare users stats',
+    'page callback' => 'pp_comparing_users',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function pp_comparing_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'ctools' && $plugin_type == 'content_types') {
+    return 'plugins/content_types';
+  }
+}
+
+function pp_comparing_users($users) {
+  $users = explode(',', $users);
+
+  if (!empty($_GET['types'])) {
+    $types = $_GET['types'];
+  }
+  else {
+    $types = NULL;
+  }
+
+  $data = _pp_comparing_users_data($users, $types);
+
+  if (is_string($data)) {
+    return;
+  }
+
+  foreach (node_load_multiple($users) as $user_node) {
+    $titles[] = $user_node->title;
+  }
+
+  print 'date	' . implode('	', $titles) . "\n";
+
+  foreach ($data as $value) {
+    $date = $value['timestamp'];
+    unset($value['timestamp']);
+    print str_replace(' ', '-', $date) . '	' . implode('	', $value) . "\n";
+  }
+  drupal_exit();
+}
+
+function _pp_comparing_users_data($users, $types = NULL) {
+  $table_data = array();
+  $users = node_load_multiple($users);
+
+  foreach ($users as $user_node) {
+    if (empty($user_node->field_user_id[LANGUAGE_NONE][0]['value'])) {
+      watchdog('warning', t('User @user_name doesn\'t have attached d.rog UID!', array('@user_name' => $user_node->title)));
+      continue;
+    }
+
+    $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
+
+    $query = db_select('ppgetstat', 'ppst')
+      ->fields('ppst', array('timestamp', 'items'))
+      ->condition('ppst.doid', $doid)
+      ->groupBy('timestamp')
+      ->orderBy('ppst.timestamp', 'DESC');
+
+    $query->addExpression('SUM(items)', 'commits_count');
+
+    if (isset($types)) {
+      $query->condition('ppst.type', explode(',', $types), 'IN');
+    }
+
+    $db_data = $query->execute()->fetchAllAssoc('timestamp');
+
+    $beginning = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
+    $timestamp = $beginning - ($beginning % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+
+    while ($timestamp < REQUEST_TIME) {
+      $commits = 0;
+      if (isset($db_data[$timestamp])) {
+        $commits = $db_data[$timestamp]->commits_count;
+      }
+      $table_data[$timestamp]['timestamp'] = format_date($timestamp, 'custom', 'j M y');
+      $table_data[$timestamp][$doid] = $commits;
+
+      $timestamp += PPGETSTAT_TIME_PERIOD_GRANULARITY;
+    }
+
+  }
+
+  return $table_data;
+}
