@@ -37,8 +37,9 @@ function pp_comparing_ctools_plugin_directory($owner, $plugin_type) {
  *   User node nids separated by comma.
  */
 function pp_comparing_users($users) {
+  $types = array();
   if (!empty($_GET['types'])) {
-    $types = $_GET['types'];
+    $types = explode(',', $_GET['types']);
   }
 
   $titles = array();
@@ -73,13 +74,13 @@ function pp_comparing_users($users) {
  *
  * @param array $users
  *   List of user nodes nid.
- * @param null|string $types
+ * @param array $types
  *   List of stats type.
  *
  * @return array
  *   Array of statistics per week.
  */
-function _pp_comparing_users_data($users, $types = NULL) {
+function _pp_comparing_users_data($users, $types) {
   $table_data = array();
   $users = node_load_multiple($users);
 
@@ -99,7 +100,7 @@ function _pp_comparing_users_data($users, $types = NULL) {
 
     $query->addExpression('SUM(items)', 'commits_count');
 
-    if (isset($types)) {
+    if (!empty($types)) {
       $query->condition('ppst.type', explode(',', $types), 'IN');
     }
 

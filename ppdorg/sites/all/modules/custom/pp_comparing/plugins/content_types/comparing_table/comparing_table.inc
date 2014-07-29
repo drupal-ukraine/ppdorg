@@ -30,13 +30,11 @@ function pp_comparing_comparing_table_content_type_render($subtype, $conf, $pane
     return $block;
   }
 
+  $types = array();
   $users = explode(',', $_GET['users']);
 
   if (!empty($_GET['types'])) {
-    $types = $_GET['types'];
-  }
-  else {
-    $types = NULL;
+    $types = explode(',', $_GET['types']);
   }
 
   $data = _pp_comparing_users_data($users, $types);
