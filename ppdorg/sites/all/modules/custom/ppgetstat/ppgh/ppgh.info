@@ -1,0 +1,4 @@
+name = PP Stats GitHub
+description = Get github.com user's commits
+core = 7.x
+version = 1.0
