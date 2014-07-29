@@ -1,0 +1,36 @@
+<?php
+
+/**
+ * @file
+ * PP Master update hooks.
+ */
+
+/**
+ * Apply panels page for user node.
+ */
+function pp_master_update_7000() {
+  features_revert_module('ppdorg_user_content');
+}
+
+/**
+ * Enable frontpage.
+ */
+function pp_master_update_7001() {
+  module_enable(array('pp_frontpage', 'ppdorg_frontpage'));
+}
+
+/**
+ * Remove Core Commits statistics.
+ */
+function pp_master_update_7002() {
+  db_query('DELETE FROM {ppgetstat} WHERE type = :type', array(
+    ':type' => PPGETSTAT_TYPE_CORE_COMMITS,
+  ));
+}
+
+/**
+ * Enable pp_comparing module.
+ */
+function pp_master_update_7003() {
+  module_enable(array('pp_comparing', 'comparing_page'));
+}

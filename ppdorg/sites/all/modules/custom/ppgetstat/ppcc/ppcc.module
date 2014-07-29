@@ -1,0 +1,137 @@
+<?php
+
+/**
+ * @file
+ * Drupal.org Core Commits.
+ */
+
+// Commmits type of data.
+define('PPGETSTAT_TYPE_CORE_COMMITS', 2);
+
+/**
+ * Implements hook_ppgetstat_stats_job().
+ */
+function ppcc_ppgetstat_stats_job($user_node) {
+  $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
+
+  $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+    array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_CORE_COMMITS)
+  )->fetchField();
+  $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+  if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
+    return;
+  }
+
+  $job = array(
+    'generate_urls_callback' => '_ppcc_get_core_commits_tracking_urls',
+    'parse_pages_callback' => '_ppcc_parse_core_commits',
+    'doid' => $doid,
+    'do_nickname' => $user_node->title,
+    'last_scan' => $last_scan,
+  );
+  return $job;
+}
+
+/**
+ * Build urls for scanning core commits.
+ */
+function _ppcc_get_core_commits_tracking_urls($data) {
+  $last_scan = $data['last_scan'];
+  // In worst scenario we expect six pages of commits per day.
+  $days_number = round((REQUEST_TIME - $last_scan) / (24 * 60 * 60));
+  $urls = array();
+  for ($i = 0; $i < $days_number; $i++) {
+    $urls[] = 'https://www.drupal.org/node/3060/commits?page=' . $i;
+  }
+  return $urls;
+}
+
+/**
+ * Parse core commits pages.
+ */
+function _ppcc_parse_core_commits($page_content, $data) {
+  $nickname = $data['do_nickname'];
+  $last_scan = $data['last_scan'];
+  if (empty($page_content)) {
+    throw new Exception('Empty page content.');
+  }
+
+  $views_li_elements = htmlqp($page_content, '.views-row');
+
+  $commits_counter = 0;
+  $commits_counter_array = array();
+
+  foreach ($views_li_elements as $view_li_element) {
+    $view_li_element_date = clone $view_li_element;
+    $date_string = $view_li_element_date->find('h3 a')->innerHTML();
+
+    $commit_timestamp = strtotime($date_string);
+    if (empty($commit_timestamp)) {
+      throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $date_string)));
+    }
+
+    // Stop scrapping any other pages as they are too old.
+    if ($commit_timestamp <= $last_scan) {
+      return FALSE;
+    }
+
+    $commit_message = $view_li_element->find('.field-content pre')->innerHTML();
+
+    if (strpos($commit_message, $nickname) == FALSE) {
+      continue;
+    }
+
+    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    if (!isset($commits_counter_array[$period_timestamp])) {
+      $commits_counter_array[$period_timestamp] = 0;
+    }
+    $commits_counter_array[$period_timestamp]++;
+    $commits_counter++;
+  }
+
+  if ($commits_counter == 0) {
+    return $commits_counter;
+  }
+
+  $commits_counter_array['#type'] = PPGETSTAT_TYPE_CORE_COMMITS;
+
+  return $commits_counter_array;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function ppcc_menu() {
+  $items['node/%node/core_commits'] = array(
+    'title' => 'Core Commits',
+    'description' => 'Core commits statistics.',
+    'page callback' => 'ppcc_commits_page',
+    'page arguments' => array(1),
+    'access callback' => 'ppgetstat_commits_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'ppcc.pages.inc',
+  );
+
+  $items['node/%node/core_commits/data.tsv'] = array(
+    'title' => 'Core Commits Tsv',
+    'description' => 'Core Commits statistics.',
+    'page callback' => 'ppccc_commits_tsv_source',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'file' => 'ppcc.pages.inc',
+  );
+
+  return $items;
+}
+
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function ppcc_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'ctools' && $plugin_type == 'content_types') {
+    return 'plugins/content_types';
+  }
+}

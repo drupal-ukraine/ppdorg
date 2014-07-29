@@ -1,0 +1,208 @@
+<?php
+
+/**
+ * @file
+ * Drupal.org Comments.
+ */
+
+// Comments type of data.
+define('PPGETSTAT_TYPE_COMMENTS', 3);
+
+/**
+ * Implements hook_ppgetstat_stats_job().
+ */
+function ppcmnt_ppgetstat_stats_job($user_node) {
+  $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
+
+  $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+    array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMENTS)
+  )->fetchField();
+  $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+  if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
+    return;
+  }
+
+  $job = array(
+    'generate_urls_callback' => '_ppcmnt_get_comments_tracking_urls',
+    'parse_pages_callback' => '_ppcmnt_parse_posts_list',
+    'doid' => $doid,
+    'do_nickname' => $user_node->title,
+    'last_scan' => $last_scan,
+  );
+  return $job;
+}
+
+/**
+ * Build urls for scanning core commits.
+ */
+function _ppcmnt_get_comments_tracking_urls($data) {
+  $last_scan = $data['last_scan'];
+  // In worst scenario we expect one page of posts per four hours.
+  // See webchick as example https://www.drupal.org/user/24967/track
+  $days_number = round((REQUEST_TIME - $last_scan) / (4 * 60 * 60));
+  $urls = array();
+  for ($i = 0; $i < $days_number; $i++) {
+    $urls[] = 'https://www.drupal.org/user/' . $data['doid'] . '/track?page=' . $i;
+  }
+  return $urls;
+}
+
+/**
+ * Parse user's posts page and create job items to parse individual post pages.
+ */
+function _ppcmnt_parse_posts_list($page_content, $data) {
+  $nickname = $data['do_nickname'];
+  $last_scan = $data['last_scan'];
+  if (empty($page_content)) {
+    throw new Exception('Empty page content.');
+  }
+
+  $dorg_scrapping_queue = DrupalQueue::get('dorg_scrapping');
+
+  $table_rows = htmlqp($page_content, 'tbody tr');
+
+  foreach ($table_rows as $table_row) {
+    $cells = $table_row->find('td');
+    $i = 0;
+    // Cells is QueryPath type object that implements only IteratorAggregate so
+    // we need to iterate through all items instead of calling $cells[0].
+    foreach ($cells as $cell) {
+      switch ($i) {
+        case 0:
+          $type_cell = clone $cell;
+          break;
+
+        case 1:
+          $url_cell = clone $cell;
+          break;
+
+        case 4:
+          $date_cell = clone $cell;
+          break;
+      }
+      $i++;
+    }
+    $type = $type_cell->innerHTML();
+
+    if ($type == 'No content available.') {
+      return FALSE;
+    }
+
+    if ($type != 'Issue') {
+      continue;
+    }
+
+    // Last cell is one with date.
+    $date_string = $date_cell->innerHTML();
+
+    // We stop scanning if find issue updated earlier than our last scan time.
+    $last_change_timestamp = strtotime($date_string);
+    if (empty($last_change_timestamp)) {
+      throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $date_string)));
+    }
+
+    if ($last_change_timestamp <= $last_scan) {
+      return FALSE;
+    }
+
+    $url = 'https://drupal.org' . $url_cell->find('a')->attr('href');
+
+    $scrapping_job = array(
+      'id' => user_password(),
+      'url' => $url,
+      'data' => $data,
+      'parse_pages_callback' => '_ppcmnt_parse_post_page',
+    );
+    $dorg_scrapping_queue->createItem($scrapping_job);
+  }
+
+  return 0;
+}
+
+/**
+ * Parse post page for comments.
+ */
+function _ppcmnt_parse_post_page($page_content, $data) {
+  $nickname = $data['do_nickname'];
+  $last_scan = $data['last_scan'];
+  if (empty($page_content)) {
+    throw new Exception('Empty page content.');
+  }
+
+  $comment_elements = htmlqp($page_content, '.comment .submitted');
+
+  $comment_counter = 0;
+  $comments_counter_array = array();
+
+  foreach ($comment_elements as $comment_element) {
+    // Extract comment's date.
+    $comment_element_date = clone $comment_element;
+    $comment_date_string = $comment_element_date->find('time')->attr('datetime');
+    $comment_timestamp = strtotime($comment_date_string);
+    if (empty($comment_timestamp)) {
+      throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $comment_date_string)));
+    }
+    if ($comment_timestamp < $last_scan) {
+      return FALSE;
+    }
+
+    // Extract comment's author nickname.
+    $comment_element_nickname = clone $comment_element;
+    $comment_nickname = $comment_element_nickname->find('a.username')->innerHTML();
+    if ($comment_nickname != $nickname) {
+      continue;
+    }
+
+    $period_timestamp = $comment_timestamp - ($comment_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    if (!isset($comments_counter_array[$period_timestamp])) {
+      $comments_counter_array[$period_timestamp] = 0;
+    }
+    $comments_counter_array[$period_timestamp]++;
+    $comment_counter++;
+  }
+
+  if ($comment_counter == 0) {
+    return $comment_counter;
+  }
+
+  $comments_counter_array['#type'] = PPGETSTAT_TYPE_COMMENTS;
+
+  return $comments_counter_array;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function ppcmnt_menu() {
+  $items['node/%node/comments'] = array(
+    'title' => 'Comments',
+    'description' => 'Comments statistics.',
+    'page callback' => 'ppcmnt_comments_page',
+    'page arguments' => array(1),
+    'access callback' => 'ppgetstat_commits_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'ppcmnt.pages.inc',
+  );
+
+  $items['node/%node/comments/data.tsv'] = array(
+    'title' => 'Comments Tsv',
+    'description' => 'Comments statistics.',
+    'page callback' => 'ppcmnt_comments_tsv_source',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'file' => 'ppcmnt.pages.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function ppcmnt_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'ctools' && $plugin_type == 'content_types') {
+    return 'plugins/content_types';
+  }
+}
