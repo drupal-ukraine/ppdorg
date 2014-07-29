@@ -1,0 +1,16 @@
+.pp-comparing-chart .axis path,
+.pp-comparing-chart .axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.pp-comparing-chart .line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+svg {
+  overflow: visible;
+}

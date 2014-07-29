@@ -27,3 +27,10 @@ function pp_master_update_7002() {
     ':type' => PPGETSTAT_TYPE_CORE_COMMITS,
   ));
 }
+
+/**
+ * Enable pp_comparing module.
+ */
+function pp_master_update_7003() {
+  module_enable(array('pp_comparing', 'comparing_page'));
+}

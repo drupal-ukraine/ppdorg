@@ -31,8 +31,14 @@ function ppcc_commits_page($node) {
  * Print stats for visualization.
  */
 function ppccc_commits_tsv_source($node) {
+  drupal_add_http_header('Cache-Control', 'private, max-age=' . 60 * 60 * 24);
+  drupal_add_http_header('Content-Type', 'application/octet-stream');
+  drupal_add_http_header('Content-Transfer-Encoding', 'binary');
+
   $data = _ppcc_commits_data($node);
+
   print t('date	close') . "\n";
+
   if (is_string($data)) {
     return;
   }
@@ -41,6 +47,7 @@ function ppccc_commits_tsv_source($node) {
     list($date, $number) = $value;
     print str_replace(' ', '-', $date) . '	' . $number . "\n";
   }
+
   drupal_exit();
 }
 
