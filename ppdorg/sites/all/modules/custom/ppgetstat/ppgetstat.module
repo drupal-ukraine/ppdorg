@@ -503,7 +503,7 @@ function ppgetstat_node_insert($node) {
 function ppgetstat_node_delete($node) {
   if ($node->type == 'user' && !empty($node->field_user_id[LANGUAGE_NONE][0]['value'])) {
     db_delete('ppgetstat')
-      ->condition('diod', $node->field_user_id[LANGUAGE_NONE][0]['value'])
+      ->condition('doid', $node->field_user_id[LANGUAGE_NONE][0]['value'])
       ->execute();
   }
 }
