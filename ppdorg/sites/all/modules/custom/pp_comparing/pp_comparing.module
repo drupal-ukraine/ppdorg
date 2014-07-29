@@ -41,18 +41,23 @@ function pp_comparing_users($users) {
     $types = $_GET['types'];
   }
 
+  $titles = array();
   $users = explode(',', $users);
   $data = _pp_comparing_users_data($users, $types);
 
-  if (is_string($data)) {
-    return;
-  }
+  drupal_add_http_header('Cache-Control', 'private, max-age=' . 60 * 60 * 24);
+  drupal_add_http_header('Content-Type', 'application/octet-stream');
+  drupal_add_http_header('Content-Transfer-Encoding', 'binary');
 
   foreach (node_load_multiple($users) as $user_node) {
     $titles[] = $user_node->title;
   }
 
   print 'date	' . implode('	', $titles) . "\n";
+
+  if (is_string($data)) {
+    return;
+  }
 
   foreach ($data as $value) {
     $date = $value['timestamp'];

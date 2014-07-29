@@ -30,8 +30,14 @@ function ppcmnt_comments_page($node) {
  * Print stats for visualization.
  */
 function ppcmnt_comments_tsv_source($node) {
+  drupal_add_http_header('Cache-Control', 'private, max-age=' . 60 * 60 * 24);
+  drupal_add_http_header('Content-Type', 'application/octet-stream');
+  drupal_add_http_header('Content-Transfer-Encoding', 'binary');
+
   $data = _pppcmnt_load_the_data($node);
+
   print t('date	close') . "\n";
+
   if (is_string($data)) {
     return;
   }
@@ -40,6 +46,7 @@ function ppcmnt_comments_tsv_source($node) {
     list($date, $number) = $value;
     print str_replace(' ', '-', $date) . '	' . $number . "\n";
   }
+
   drupal_exit();
 }
 

@@ -30,8 +30,14 @@ function ppgetstat_commits_page($node) {
  * Generate tsv file for chart.
  */
 function ppgetstat_commits_tsv_source($node) {
+  drupal_add_http_header('Cache-Control', 'private, max-age=' . 60 * 60 * 24);
+  drupal_add_http_header('Content-Type', 'application/octet-stream');
+  drupal_add_http_header('Content-Transfer-Encoding', 'binary');
+
   $data = _ppgetstat_get_commits_data($node);
+
   print t('date	close') . "\n";
+
   if (is_string($data)) {
     return;
   }
@@ -40,6 +46,7 @@ function ppgetstat_commits_tsv_source($node) {
     list($date, $number) = $value;
     print str_replace(' ', '-', $date) . '	' . $number . "\n";
   }
+
   drupal_exit();
 }
 
