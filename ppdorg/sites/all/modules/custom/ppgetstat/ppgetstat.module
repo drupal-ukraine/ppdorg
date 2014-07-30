@@ -7,9 +7,9 @@
 
 define('PPGETSTAT_USER_NODE_TYPE', 'user');
 // Number of users queued to be scanned per cron run.
-define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 10);
+define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 100);
 // Number of calls to drupal.org per cron run.
-define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 10);
+define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 100);
 // If no stats available we scan commits for last half a year.
 define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 6 * 30 * 24 * 60 * 60));
 // We group statistics per week.
@@ -400,9 +400,11 @@ function _ppgetstat_parse_commits($page_content, $data) {
 
     if ($first_commit_timestamp) {
       $first_commit_timestamp = FALSE;
-      $last_commits = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array());
-      $last_commits[$data['doid']] = $commit_timestamp;
-      variable_set('ppgetstat_ppgetstat_last_commit_timestamp', $last_commits);
+      $last_commits = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array($data['doid'] => 0));
+      if (empty($last_commits[$data['doid']]) || $commit_timestamp > $last_commits[$data['doid']]) {
+        $last_commits[$data['doid']] = $commit_timestamp;
+        variable_set('ppgetstat_ppgetstat_last_commit_timestamp', $last_commits);
+      }
     }
 
     if ($commit_timestamp <= $last_scan) {

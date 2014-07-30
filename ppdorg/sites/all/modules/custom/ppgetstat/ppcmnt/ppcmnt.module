@@ -52,6 +52,7 @@ function _ppcmnt_get_comments_tracking_urls($data) {
   for ($i = 0; $i < $days_number; $i++) {
     $urls[] = 'https://www.drupal.org/user/' . $data['doid'] . '/track?page=' . $i;
   }
+
   return $urls;
 }
 
@@ -154,12 +155,14 @@ function _ppcmnt_parse_post_page($page_content, $data) {
 
     if ($first_commit_timestamp) {
       $first_commit_timestamp = FALSE;
-      $last_comment = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array());
-      $last_comment[$data['doid']] = $comment_timestamp;
-      variable_set('ppgetstat_ppcmnt_last_comment_timestamp', $last_comment);
+      $last_comment = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array($data['doid'] => 0));
+      if (empty($last_comment[$data['doid']]) || ($comment_timestamp > $last_comment[$data['doid']])) {
+        $last_comment[$data['doid']] = $comment_timestamp;
+        variable_set('ppgetstat_ppcmnt_last_comment_timestamp', $last_comment);
+      }
     }
 
-    if ($comment_timestamp < $last_scan) {
+    if ($comment_timestamp <= $last_scan) {
       return FALSE;
     }
 

@@ -83,9 +83,11 @@ function _ppcc_parse_core_commits($page_content, $data) {
 
     if ($first_commit_timestamp) {
       $first_commit_timestamp = FALSE;
-      $last_commits = variable_get('ppgetstat_ppcc_last_commit_timestamp', array());
-      $last_commits[$data['doid']] = $commit_timestamp;
-      variable_set('ppgetstat_ppcc_last_commit_timestamp', $last_commits);
+      $last_commits = variable_get('ppgetstat_ppcc_last_commit_timestamp', array($data['doid'] => 0));
+      if (empty($last_commits[$data['doid']]) || $commit_timestamp > $last_commits[$data['doid']]) {
+        $last_commits[$data['doid']] = $commit_timestamp;
+        variable_set('ppgetstat_ppcc_last_commit_timestamp', $last_commits);
+      }
     }
 
     // Stop scrapping any other pages as they are too old.
