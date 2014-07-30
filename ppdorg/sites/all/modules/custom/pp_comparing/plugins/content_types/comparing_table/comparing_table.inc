@@ -30,14 +30,22 @@ function pp_comparing_comparing_table_content_type_render($subtype, $conf, $pane
     return $block;
   }
 
-  $types = array();
+  $types = $dates = array();
   $users = explode(',', $_GET['users']);
 
   if (!empty($_GET['types'])) {
     $types = explode(',', $_GET['types']);
   }
 
-  $data = _pp_comparing_users_data($users, $types);
+  if (!empty($_GET['from'])) {
+    $dates['from'] = $_GET['from'];
+  }
+
+  if (!empty($_GET['till'])) {
+    $dates['till'] = $_GET['till'];
+  }
+
+  $data = _pp_comparing_users_data($users, $types, $dates);
 
   $header = array(t('Date'));
   foreach (reset($data) as $key => $field) {
@@ -88,6 +96,20 @@ function pp_comparing_comparing_table_settings_form($form, &$form_state) {
     '#default_value' => isset($_GET['users']) ? explode(',', $_GET['types']) : '',
   );
 
+  $form['from'] = array(
+    '#title' => t('From date filter'),
+    '#type' => 'date_select',
+    '#date_format' => 'j M y',
+    '#default_value' => time(),
+  );
+
+  $form['till'] = array(
+    '#title' => t('Till date filter'),
+    '#type' => 'date_select',
+    '#date_format' => 'j M y',
+    '#default_value' => time(),
+  );
+
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Compare!'),
@@ -102,6 +124,15 @@ function pp_comparing_comparing_table_settings_form($form, &$form_state) {
 function pp_comparing_comparing_table_settings_form_submit($form, &$form_state) {
   $users = implode(',', $form_state['values']['users']);
   $types = implode(',', $form_state['values']['types']);
+  $from = new DateObject($form_state['values']['from']);
+  $till = new DateObject($form_state['values']['till']);
 
-  drupal_goto('comparing', array('query' => array('users' => $users, 'types' => $types)));
+  drupal_goto('comparing', array(
+    'query' => array(
+      'users' => $users,
+      'types' => $types,
+      'from' => $from->getTimestamp(),
+      'till' => $till->getTimestamp(),
+    )
+  ));
 }
