@@ -159,7 +159,13 @@ function ppgetstat_ppgetstat_stats_job($user_node) {
   $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
     array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMITS)
   )->fetchField();
-  $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+  $last_commit_timestamp = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array()) + array($doid => 0);
+  $last_scan = max(array(
+    (int) $last_scan,
+    REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
+    $last_commit_timestamp[$doid],
+  ));
 
   if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
     return;
@@ -385,11 +391,19 @@ function _ppgetstat_parse_commits($page_content, $data) {
     throw new Exception(t('Page does not have any ".commit-global h3" elements.'));
   }
 
+  $first_commit_timestamp = TRUE;
   $commits_counter_array = array();
   $commits_counter = 0;
 
   foreach ($strings as $string) {
     $commit_timestamp = _ppgetstat_parse_commits_page_date($string->html());
+
+    if ($first_commit_timestamp) {
+      $first_commit_timestamp = FALSE;
+      $last_commits = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array());
+      $last_commits[$data['doid']] = $commit_timestamp;
+      variable_set('ppgetstat_ppgetstat_last_commit_timestamp', $last_commits);
+    }
 
     if ($commit_timestamp <= $last_scan) {
       break;

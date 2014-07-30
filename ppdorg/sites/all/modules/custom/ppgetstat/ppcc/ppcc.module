@@ -7,6 +7,8 @@
 
 // Commmits type of data.
 define('PPGETSTAT_TYPE_CORE_COMMITS', 2);
+// Core commit pages per day.
+define('PPGETSTAT_CORE_COMMITS_PAGES_PER_DAY', 6);
 
 /**
  * Implements hook_ppgetstat_stats_job().
@@ -17,7 +19,14 @@ function ppcc_ppgetstat_stats_job($user_node) {
   $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
     array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_CORE_COMMITS)
   )->fetchField();
-  $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+  $last_commit_timestamp = variable_get('ppgetstat_ppcc_last_commit_timestamp', array()) + array($doid => 0);
+
+  $last_scan = max(array(
+    (int) $last_scan,
+    REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
+    $last_commit_timestamp[$doid],
+  ));
 
   if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
     return;
@@ -39,7 +48,7 @@ function ppcc_ppgetstat_stats_job($user_node) {
 function _ppcc_get_core_commits_tracking_urls($data) {
   $last_scan = $data['last_scan'];
   // In worst scenario we expect six pages of commits per day.
-  $days_number = round((REQUEST_TIME - $last_scan) / (24 * 60 * 60));
+  $days_number = round((REQUEST_TIME - $last_scan) / (24 * 60 * 60)) * PPGETSTAT_CORE_COMMITS_PAGES_PER_DAY;
   $urls = array();
   for ($i = 0; $i < $days_number; $i++) {
     $urls[] = 'https://www.drupal.org/node/3060/commits?page=' . $i;
@@ -59,6 +68,7 @@ function _ppcc_parse_core_commits($page_content, $data) {
 
   $views_li_elements = htmlqp($page_content, '.views-row');
 
+  $first_commit_timestamp = TRUE;
   $commits_counter = 0;
   $commits_counter_array = array();
 
@@ -69,6 +79,13 @@ function _ppcc_parse_core_commits($page_content, $data) {
     $commit_timestamp = strtotime($date_string);
     if (empty($commit_timestamp)) {
       throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $date_string)));
+    }
+
+    if ($first_commit_timestamp) {
+      $first_commit_timestamp = FALSE;
+      $last_commits = variable_get('ppgetstat_ppcc_last_commit_timestamp', array());
+      $last_commits[$data['doid']] = $commit_timestamp;
+      variable_set('ppgetstat_ppcc_last_commit_timestamp', $last_commits);
     }
 
     // Stop scrapping any other pages as they are too old.

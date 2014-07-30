@@ -17,7 +17,14 @@ function ppcmnt_ppgetstat_stats_job($user_node) {
   $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
     array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMENTS)
   )->fetchField();
-  $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+  $last_comment_timestamp = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array()) + array($doid => 0);
+
+  $last_scan = max(array(
+    (int) $last_scan,
+    REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
+    $last_comment_timestamp[$doid],
+  ));
 
   if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
     return;
@@ -132,6 +139,7 @@ function _ppcmnt_parse_post_page($page_content, $data) {
 
   $comment_elements = htmlqp($page_content, '.comment .submitted');
 
+  $first_commit_timestamp = TRUE;
   $comment_counter = 0;
   $comments_counter_array = array();
 
@@ -143,6 +151,14 @@ function _ppcmnt_parse_post_page($page_content, $data) {
     if (empty($comment_timestamp)) {
       throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $comment_date_string)));
     }
+
+    if ($first_commit_timestamp) {
+      $first_commit_timestamp = FALSE;
+      $last_comment = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array());
+      $last_comment[$data['doid']] = $comment_timestamp;
+      variable_set('ppgetstat_ppcmnt_last_comment_timestamp', $last_comment);
+    }
+
     if ($comment_timestamp < $last_scan) {
       return FALSE;
     }
