@@ -37,14 +37,22 @@ function pp_comparing_ctools_plugin_directory($owner, $plugin_type) {
  *   User node nids separated by comma.
  */
 function pp_comparing_users($users) {
-  $types = array();
+  $types = $dates = array();
   if (!empty($_GET['types'])) {
     $types = explode(',', $_GET['types']);
   }
 
+  if (!empty($_GET['from'])) {
+    $dates['from'] = $_GET['from'];
+  }
+
+  if (!empty($_GET['till'])) {
+    $dates['till'] = $_GET['till'];
+  }
+
   $titles = array();
   $users = explode(',', $users);
-  $data = _pp_comparing_users_data($users, $types);
+  $data = _pp_comparing_users_data($users, $types, $dates);
 
   drupal_add_http_header('Cache-Control', 'private, max-age=' . 60 * 60 * 24);
   drupal_add_http_header('Content-Type', 'application/octet-stream');
@@ -80,7 +88,7 @@ function pp_comparing_users($users) {
  * @return array
  *   Array of statistics per week.
  */
-function _pp_comparing_users_data($users, $types) {
+function _pp_comparing_users_data($users, $types, $dates) {
   $table_data = array();
   $users = node_load_multiple($users);
 
@@ -100,16 +108,25 @@ function _pp_comparing_users_data($users, $types) {
 
     $query->addExpression('SUM(items)', 'commits_count');
 
+    if (!empty($dates['from'])) {
+      $query->condition('ppst.timestamp', $dates['from'], '>=');
+    }
+
+    if (!empty($dates['till'])) {
+      $query->condition('ppst.timestamp', $dates['till'], '<=');
+    }
+
     if (!empty($types)) {
-      $query->condition('ppst.type', explode(',', $types), 'IN');
+      $query->condition('ppst.type', $types, 'IN');
     }
 
     $db_data = $query->execute()->fetchAllAssoc('timestamp');
 
-    $beginning = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
+    $beginning = (!empty($dates['from'])) ? $dates['from'] : REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
     $timestamp = $beginning - ($beginning % PPGETSTAT_TIME_PERIOD_GRANULARITY);
 
-    while ($timestamp < REQUEST_TIME) {
+    $till_time = !empty($dates['till']) ? $dates['till'] : REQUEST_TIME;
+    while ($timestamp < $till_time) {
       $commits = 0;
       if (isset($db_data[$timestamp])) {
         $commits = $db_data[$timestamp]->commits_count;

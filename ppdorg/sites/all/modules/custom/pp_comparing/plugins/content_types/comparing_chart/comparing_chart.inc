@@ -27,13 +27,21 @@ function pp_comparing_comparing_chart_content_type_render($subtype, $conf, $pane
     return FALSE;
   }
 
-  $data_tsv_url = base_path() . 'comparing/' . $_GET['users'] . '/data.tsv';
-
+  $query = array();
   if (isset($_GET['types'])) {
-    $data_tsv_url .= '?types=' . $_GET['types'];
+    $query['types'] = $_GET['types'];
   }
 
-  drupal_add_js(array('pp_comparing' => array('data' => $data_tsv_url)), 'setting');
+  if (isset($_GET['from'])) {
+    $query['from'] = $_GET['from'];
+  }
+
+  if (isset($_GET['till'])) {
+    $query['till'] = $_GET['till'];
+  }
+
+  $data_tsv_url = url('comparing/' . $_GET['users'] . '/data.tsv', array('query' => $query));
+  drupal_add_js(array('pp_comparing' => array('data' => urldecode($data_tsv_url))), 'setting');
   _ppgetstat_add_d3_js();
   drupal_add_js(drupal_get_path('module', 'pp_comparing') . '/plugins/content_types/comparing_chart/pp_comparing_chart.js');
   drupal_add_css(drupal_get_path('module', 'pp_comparing') . '/plugins/content_types/comparing_chart/pp_comparing_chart.css');
