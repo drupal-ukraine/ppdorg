@@ -35,7 +35,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
     . 'WHERE type = :type AND timestamp > :timestamp '
     . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,5';
 
-  $last_thee_months = REQUEST_TIME - 3 * 30 * 24 * 60 * 60;
+  $last_thee_months = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
 
   $types = array(
     'Commits' => PPGETSTAT_TYPE_COMMITS,
