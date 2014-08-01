@@ -134,6 +134,11 @@ function ppgetstat_reset_form_submit($form, $form_state) {
     variable_del('ppgetstat_last_statsjobs_timestamp');
     db_query('TRUNCATE TABLE {ppgetstat}');
 
+    variable_del('ppgetstat_ppcc_last_commit_timestamp');
+    variable_del('ppgetstat_ppcmnt_last_comment_timestamp');
+    variable_del('ppgetstat_ppgetstat_last_commit_timestamp');
+    variable_del('ppgetstat_last_statsjobs_timestamp');
+
     drupal_set_message(t('Statistics resetted.'));
   }
   elseif (!empty($form_state['values']['users'])) {

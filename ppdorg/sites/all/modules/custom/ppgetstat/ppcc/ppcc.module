@@ -7,6 +7,8 @@
 
 // Commmits type of data.
 define('PPGETSTAT_TYPE_CORE_COMMITS', 2);
+// Core commit pages per day.
+define('PPGETSTAT_CORE_COMMITS_PAGES_PER_DAY', 10);
 
 /**
  * Implements hook_ppgetstat_stats_job().
@@ -14,10 +16,17 @@ define('PPGETSTAT_TYPE_CORE_COMMITS', 2);
 function ppcc_ppgetstat_stats_job($user_node) {
   $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
 
-  $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+  $last_scan_week = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
     array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_CORE_COMMITS)
   )->fetchField();
-  $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+  $last_commit_timestamp = variable_get('ppgetstat_ppcc_last_commit_timestamp', array($doid => array()));
+  $last_commit_timestamp[$doid] += array($last_scan_week => 0);
+
+  $last_scan = max(array(
+    REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
+    $last_commit_timestamp[$doid][$last_scan_week],
+  ));
 
   if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
     return;
@@ -39,7 +48,7 @@ function ppcc_ppgetstat_stats_job($user_node) {
 function _ppcc_get_core_commits_tracking_urls($data) {
   $last_scan = $data['last_scan'];
   // In worst scenario we expect six pages of commits per day.
-  $days_number = round((REQUEST_TIME - $last_scan) / (24 * 60 * 60));
+  $days_number = round((REQUEST_TIME - $last_scan) / (24 * 60 * 60)) * PPGETSTAT_CORE_COMMITS_PAGES_PER_DAY;
   $urls = array();
   for ($i = 0; $i < $days_number; $i++) {
     $urls[] = 'https://www.drupal.org/node/3060/commits?page=' . $i;
@@ -59,6 +68,7 @@ function _ppcc_parse_core_commits($page_content, $data) {
 
   $views_li_elements = htmlqp($page_content, '.views-row');
 
+  $first_commit_timestamp = TRUE;
   $commits_counter = 0;
   $commits_counter_array = array();
 
@@ -83,6 +93,17 @@ function _ppcc_parse_core_commits($page_content, $data) {
     }
 
     $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    $last_commits = variable_get('ppgetstat_ppcc_last_commit_timestamp', array($data['doid'] => array($period_timestamp => 0)));
+
+    // Save latest commit's date per week into variable.
+    if ($first_commit_timestamp || empty($last_commits[$data['doid']][$period_timestamp])) {
+      $first_commit_timestamp = FALSE;
+      if (empty($last_commits[$data['doid']][$period_timestamp]) || $commit_timestamp > $last_commits[$data['doid']][$period_timestamp]) {
+        $last_commits[$data['doid']][$period_timestamp] = $commit_timestamp;
+        variable_set('ppgetstat_ppcc_last_commit_timestamp', $last_commits);
+      }
+    }
+
     if (!isset($commits_counter_array[$period_timestamp])) {
       $commits_counter_array[$period_timestamp] = 0;
     }

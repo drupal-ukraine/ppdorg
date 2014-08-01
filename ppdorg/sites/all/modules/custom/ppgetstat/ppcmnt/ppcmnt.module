@@ -14,10 +14,18 @@ define('PPGETSTAT_TYPE_COMMENTS', 3);
 function ppcmnt_ppgetstat_stats_job($user_node) {
   $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
 
-  $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+  $last_scan_week = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
     array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMENTS)
   )->fetchField();
-  $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+  $last_comment_timestamp = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array($doid => array()));
+
+  $last_comment_timestamp[$doid] += array($last_scan_week => 0);
+
+  $last_scan = max(array(
+    REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
+    $last_comment_timestamp[$doid][$last_scan_week],
+  ));
 
   if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
     return;
@@ -45,6 +53,7 @@ function _ppcmnt_get_comments_tracking_urls($data) {
   for ($i = 0; $i < $days_number; $i++) {
     $urls[] = 'https://www.drupal.org/user/' . $data['doid'] . '/track?page=' . $i;
   }
+
   return $urls;
 }
 
@@ -132,6 +141,7 @@ function _ppcmnt_parse_post_page($page_content, $data) {
 
   $comment_elements = htmlqp($page_content, '.comment .submitted');
 
+  $first_commit_timestamp = TRUE;
   $comment_counter = 0;
   $comments_counter_array = array();
 
@@ -140,21 +150,36 @@ function _ppcmnt_parse_post_page($page_content, $data) {
     $comment_element_date = clone $comment_element;
     $comment_date_string = $comment_element_date->find('time')->attr('datetime');
     $comment_timestamp = strtotime($comment_date_string);
+
     if (empty($comment_timestamp)) {
       throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $comment_date_string)));
     }
-    if ($comment_timestamp < $last_scan) {
+
+    if ($comment_timestamp <= $last_scan) {
       return FALSE;
     }
 
     // Extract comment's author nickname.
     $comment_element_nickname = clone $comment_element;
     $comment_nickname = $comment_element_nickname->find('a.username')->innerHTML();
+
     if ($comment_nickname != $nickname) {
       continue;
     }
 
     $period_timestamp = $comment_timestamp - ($comment_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    $last_comment = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array($data['doid'] => array($period_timestamp => 0)));
+
+    // Save latest commit's date per week into variable.
+    if ($first_commit_timestamp || empty($last_comment[$data['doid']][$period_timestamp])) {
+      $first_commit_timestamp = FALSE;
+
+      if (empty($last_comment[$data['doid']][$period_timestamp]) || ($comment_timestamp > $last_comment[$data['doid']][$period_timestamp])) {
+        $last_comment[$data['doid']][$period_timestamp] = $comment_timestamp;
+        variable_set('ppgetstat_ppcmnt_last_comment_timestamp', $last_comment);
+      }
+    }
+
     if (!isset($comments_counter_array[$period_timestamp])) {
       $comments_counter_array[$period_timestamp] = 0;
     }
