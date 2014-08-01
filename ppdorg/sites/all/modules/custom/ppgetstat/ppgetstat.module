@@ -7,9 +7,9 @@
 
 define('PPGETSTAT_USER_NODE_TYPE', 'user');
 // Number of users queued to be scanned per cron run.
-define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 10);
+define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 100);
 // Number of calls to drupal.org per cron run.
-define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 10);
+define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 100);
 // If no stats available we scan commits for last half a year.
 define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 6 * 30 * 24 * 60 * 60));
 // We group statistics per week.
@@ -156,10 +156,18 @@ function _ppgetstat_cron_createItem_stats_jobs() {
  */
 function ppgetstat_ppgetstat_stats_job($user_node) {
   $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
-  $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+  $last_scan_week = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
     array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMITS)
   )->fetchField();
-  $last_scan = max(array((int) $last_scan, REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING));
+
+  $last_commit_timestamp = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array($doid => array()));
+
+  $last_commit_timestamp[$doid] += array($last_scan_week => 0);
+
+  $last_scan = max(array(
+    REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
+    $last_commit_timestamp[$doid][$last_scan_week],
+  ));
 
   if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
     return;
@@ -385,6 +393,7 @@ function _ppgetstat_parse_commits($page_content, $data) {
     throw new Exception(t('Page does not have any ".commit-global h3" elements.'));
   }
 
+  $first_commit_timestamp = TRUE;
   $commits_counter_array = array();
   $commits_counter = 0;
 
@@ -396,6 +405,18 @@ function _ppgetstat_parse_commits($page_content, $data) {
     }
 
     $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    $last_commits = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array($data['doid'] => array($period_timestamp => 0)));
+
+    // Save latest commit's date per week into variable.
+    if ($first_commit_timestamp || empty($last_commits[$data['doid']][$period_timestamp])) {
+      $first_commit_timestamp = FALSE;
+
+      if (empty($last_commits[$data['doid']][$period_timestamp]) || $commit_timestamp > $last_commits[$data['doid']][$period_timestamp]) {
+        $last_commits[$data['doid']][$period_timestamp] = $commit_timestamp;
+        variable_set('ppgetstat_ppgetstat_last_commit_timestamp', $last_commits);
+      }
+    }
+
     if (!isset($commits_counter_array[$period_timestamp])) {
       $commits_counter_array[$period_timestamp] = 0;
     }
