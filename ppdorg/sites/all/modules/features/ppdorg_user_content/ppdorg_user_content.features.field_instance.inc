@@ -54,6 +54,46 @@ function ppdorg_user_content_field_default_field_instances() {
     ),
   );
 
+  // Exported field_instance: 'node-user-field_github_username'
+  $field_instances['node-user-field_github_username'] = array(
+    'bundle' => 'user',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'text',
+        'settings' => array(),
+        'type' => 'text_default',
+        'weight' => 3,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_github_username',
+    'label' => 'Github username',
+    'required' => 0,
+    'settings' => array(
+      'text_processing' => 0,
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'text',
+      'settings' => array(
+        'size' => 60,
+      ),
+      'type' => 'text_textfield',
+      'weight' => 4,
+    ),
+  );
+
   // Exported field_instance: 'node-user-field_user_id'
   $field_instances['node-user-field_user_id'] = array(
     'bundle' => 'user',
@@ -98,6 +138,7 @@ function ppdorg_user_content_field_default_field_instances() {
   // Included for use with string extractors like potx.
   t('Body');
   t('Enter all users id belonged to user');
+  t('Github username');
   t('User ID');
 
   return $field_instances;
