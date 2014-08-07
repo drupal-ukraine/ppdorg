@@ -28,7 +28,7 @@ function ppgetstat_menu() {
     'description' => 'Commits statistics.',
     'page callback' => 'ppgetstat_commits_page',
     'page arguments' => array(1),
-    'access callback' =>'ppgetstat_commits_access',
+    'access callback' => 'ppgetstat_commits_access',
     'access arguments' => array(1),
     'type' => MENU_LOCAL_TASK,
     'file' => 'ppgetstat.pages.inc',
