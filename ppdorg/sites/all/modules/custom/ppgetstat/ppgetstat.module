@@ -536,3 +536,16 @@ function ppgetstat_node_insert($node) {
   // Queue scanning jobs.
   _ppgetstat_cron_processItem_stats_jobs();
 }
+
+/**
+ * Implements hook_node_delete().
+ *
+ * Delete ppgetstat table entry if related d.org user was deleted.
+ */
+function ppgetstat_node_delete($node) {
+  if ($node->type == 'user' && !empty($node->field_user_id[LANGUAGE_NONE][0]['value'])) {
+    db_delete('ppgetstat')
+      ->condition('doid', $node->field_user_id[LANGUAGE_NONE][0]['value'])
+      ->execute();
+  }
+}

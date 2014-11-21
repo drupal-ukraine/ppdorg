@@ -31,9 +31,10 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
 
   $output = t('Statistics for last three months');
 
-  $query = 'SELECT doid, SUM(items) as counter  FROM {ppgetstat} '
-    . 'WHERE type = :type AND timestamp > :timestamp '
-    . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,5';
+  $query = 'SELECT doid, SUM(items) as counter  FROM {ppgetstat} AS ppst '
+    . 'RIGHT JOIN {field_data_field_user_id} AS fuid ON fuid.field_user_id_value = ppst.doid '
+    . 'WHERE ppst.type = :type AND ppst.timestamp > :timestamp '
+    . 'GROUP BY ppst.doid ORDER BY counter DESC LIMIT 0,5';
 
   $last_thee_months = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
 
