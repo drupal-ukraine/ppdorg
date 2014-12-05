@@ -54,13 +54,13 @@ function ppgetstat_menu() {
     'file' => 'ppgetstat.pages.inc',
   );
 
-  return $items;
+   return $items;
 }
 
 /**
  * Get drupal.org user ID using nickname and http://dgo.to.
  *
- * @param string $nick
+ * @param $nick
  *   Nickname.
  *
  * @return int
