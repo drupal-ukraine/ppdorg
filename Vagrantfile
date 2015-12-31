@@ -1,37 +1,69 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+VAGRANTFILE_API_VERSION = "2"
+
+# Use rbconfig to determine if we're on a windows host or not.
+require 'rbconfig'
+is_windows = (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
+
 require 'yaml'
 
 dir = File.dirname(File.expand_path(__FILE__))
 
-configValues = YAML.load_file("#{dir}/puphpet/config.yaml")
+configValues = YAML::load_file("#{dir}/provisioning/config.yaml")
+apacheConfigValues = YAML::load_file("#{dir}/provisioning/ansible/www.yml")
 data = configValues['vagrantfile-local']
 
 if !data['vm']['provider']['virtualbox'].empty?
   ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
 end
+if !ENV['VAGRANT_CI'].nil?
+  ENV['VAGRANT_DEFAULT_PROVIDER'] = 'lxc'
+end
 
-Vagrant.configure("2") do |config|
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "#{data['vm']['box']}"
   config.vm.box_url = "#{data['vm']['box_url']}"
+
+  if !ENV['VAGRANT_CI'].nil?
+    config.vm.box = "#{data['vm']['provider']['lxc']['box']}"
+  end
 
   if data['vm']['hostname'].to_s != ''
     config.vm.hostname = "#{data['vm']['hostname']}"
   end
 
+  # If hostsupdater plugin is installed, add all servernames as aliases.
+  if Vagrant.has_plugin?("vagrant-hostsupdater")
+    config.hostsupdater.aliases = []
+    for host in apacheConfigValues[0]['vars']['apache_vhosts']
+      # Add all the hosts that aren't defined as Ansible vars.
+      unless host['servername'].include? "{{"
+        config.hostsupdater.aliases.push(host['servername'])
+      end
+    end
+  end
+
   if data['vm']['network']['private_network'].to_s != ''
-    config.vm.network "private_network", ip: "#{data['vm']['network']['private_network']}"
+    config.vm.network "private_network", ip: "#{data['vm']['network']['private_network']}", lxc__bridge_name: "lxcbr0"
   end
 
   data['vm']['network']['forwarded_port'].each do |i, port|
     if port['guest'] != '' && port['host'] != ''
-      config.vm.network :forwarded_port, guest: port['guest'].to_i, host: port['host'].to_i
+      config.vm.network :forwarded_port, guest: port['guest'].to_i, host: port['host'].to_i, auto_correct: true
     end
   end
 
-  data['vm']['synced_folder'].each do |i, folder|
-    if folder['source'] != '' && folder['target'] != '' && folder['id'] != ''
-      nfs = (folder['nfs'] == "true") ? "nfs" : nil
-      config.vm.synced_folder "#{folder['source']}", "#{folder['target']}", id: "#{folder['id']}", type: nfs
-    end
+  for folder in data['vm']['synced_folder'];
+    nfs = (folder['nfs'] == "true") ? "nfs" : nil
+    config.vm.synced_folder folder['source'], folder['target'],
+      id: folder['id'],
+      type: nfs,
+      :nfs => true,
+      :linux__nfs_options => ['rw','no_subtree_check','no_root_squash','async'],
+      rsync__auto: "true",
+      rsync__exclude: folder['excluded_paths'],
+      rsync__args: ["--verbose", "--archive", "--delete", "-z", "--chmod=ugo=rwX"]
   end
 
   config.vm.usable_port_range = (10200..10500)
@@ -48,70 +80,25 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell" do |s|
-    s.path = "puphpet/shell/initial-setup.sh"
-    s.args = "/vagrant/puphpet"
+    s.path = "provisioning/shell/initial-setup.sh"
+    s.args = "/vagrant/provisioning"
   end
-  config.vm.provision :shell, :path => "puphpet/shell/update-puppet.sh"
-  config.vm.provision :shell, :path => "puphpet/shell/r10k.sh"
 
-  config.vm.provision :puppet do |puppet|
-    ssh_username = !data['ssh']['username'].nil? ? data['ssh']['username'] : "vagrant"
-    puppet.facter = {
-      "ssh_username"     => "#{ssh_username}",
-      "provisioner_type" => ENV['VAGRANT_DEFAULT_PROVIDER'],
-    }
-    puppet.manifests_path = "#{data['vm']['provision']['puppet']['manifests_path']}"
-    puppet.manifest_file = "#{data['vm']['provision']['puppet']['manifest_file']}"
+  # Install ansible inside the box.
+  config.vm.provision :shell, :path => "provisioning/shell/ansible.sh"
 
-    if !data['vm']['provision']['puppet']['options'].empty?
-      puppet.options = data['vm']['provision']['puppet']['options']
+  # Install ansible playbooks inside the box.
+  config.vm.provision :shell, :path => "provisioning/ansible/run-ansible-playbook.sh"
+
+  # Install drupal within vm for testing.
+    if !ENV['VAGRANT_CI'].nil?
+      config.vm.provision :shell, :path => "provisioning/ansible/run-drupal-playbook.sh"
     end
-  end
 
-  if File.file?("#{dir}/puphpet/files/dot/ssh/id_rsa")
-    config.ssh.private_key_path = [
-      "#{dir}/puphpet/files/dot/ssh/id_rsa",
-      "#{dir}/puphpet/files/dot/ssh/insecure_private_key"
-    ]
-  end
-
-  ssh_username = !data['ssh']['username'].nil? ? data['ssh']['username'] : "vagrant"
-
-  config.vm.provision "shell" do |kg|
-    kg.path = "puphpet/shell/ssh-keygen.sh"
-    kg.args = "#{ssh_username}"
-  end
-
-  config.vm.provision :shell, :path => "puphpet/shell/execute-files.sh"
-
-  if !data['ssh']['host'].nil?
-    config.ssh.host = "#{data['ssh']['host']}"
-  end
-  if !data['ssh']['port'].nil?
-    config.ssh.port = "#{data['ssh']['port']}"
-  end
-  if !data['ssh']['username'].nil?
-    config.ssh.username = "#{data['ssh']['username']}"
-  end
-  if !data['ssh']['guest_port'].nil?
-    config.ssh.guest_port = data['ssh']['guest_port']
-  end
-  if !data['ssh']['shell'].nil?
-    config.ssh.shell = "#{data['ssh']['shell']}"
-  end
-  if !data['ssh']['keep_alive'].nil?
-    config.ssh.keep_alive = data['ssh']['keep_alive']
-  end
-  if !data['ssh']['forward_agent'].nil?
-    config.ssh.forward_agent = data['ssh']['forward_agent']
-  end
-  if !data['ssh']['forward_x11'].nil?
-    config.ssh.forward_x11 = data['ssh']['forward_x11']
-  end
-  if !data['vagrant']['host'].nil?
-    config.vagrant.host = data['vagrant']['host'].gsub(":", "").intern
-  end
+  config.ssh.username = "vagrant"
+  config.ssh.password = "vagrant"
+  config.ssh.shell = "sh"
+  config.ssh.insert_key = "false"
+  config.ssh.forward_agent = true
 
 end
-
-
