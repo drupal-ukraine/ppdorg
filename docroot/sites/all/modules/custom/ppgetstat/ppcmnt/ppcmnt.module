@@ -20,7 +20,7 @@ function ppcmnt_ppgetstat_stats_job($user_node) {
 
   $last_comment_timestamp = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array($doid => array()));
 
-  $last_comment_timestamp[$doid] += array($last_scan_week => 0);
+  $last_comment_timestamp[$doid] = array($last_scan_week => 0);
 
   $last_scan = max(array(
     REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
