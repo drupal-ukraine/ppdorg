@@ -1,9 +1,11 @@
 <?php
 /**
  * @file
- * A standard Views filter for a single date field, using Date API form selectors and sql handling.
+ * A standard Views filter for a single date field,
+ * using Date API form selectors and sql handling.
  */
 
+// @codingStandardsIgnoreStart
 class date_views_filter_handler_simple extends views_handler_filter_date {
   var $date_handler = NULL;
   var $offset = NULL;
@@ -263,7 +265,7 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
   }
 
   function extra_options_validate($form, &$form_state) {
-    if (!preg_match('/^(?:\-[0-9]{1,4}|[0-9]{4}):(?:[\+|\-][0-9]{1,4}|[0-9]{4})$/', $form_state['values']['options']['year_range'])) {
+    if (!preg_match('/^(?:[\+\-][0-9]{1,4}|[0-9]{4}):(?:[\+\-][0-9]{1,4}|[0-9]{4})$/', $form_state['values']['options']['year_range'])) {
       form_error($form['year_range'], t('Date year range must be in the format -9:+9, 2005:2010, -9:2010, or 2005:+9'));
     }
   }
@@ -332,7 +334,7 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
    * @return
    *   The form date part element for this instance.
    */
-  function date_parts_form($form_state, $prefix, $source, $which, $operator_values, $identifier, $relative_id) {
+  function date_parts_form(&$form_state, $prefix, $source, $which, $operator_values, $identifier, $relative_id) {
     module_load_include('inc', 'date_api', 'date_api_elements');
     switch ($prefix) {
       case 'min':
@@ -371,7 +373,7 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
         '#date_label_position' => 'within',
         '#date_year_range' => $this->options['year_range'],
         '#process' => array($type . '_element_process'),
-        '#prefix' => '<div id="' . $id . '-wrapper"><div id="' . $id . '">',
+        '#prefix' => '<div id="' . $id . '-wrapper"><div id="' . $id . '-inside-wrapper">',
         '#suffix' => '</div></div>',
       );
       if ($which == 'all') {
@@ -379,7 +381,10 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
         $form[$prefix]['#dependency'] = array($source => $operator_values);
       }
       if (!isset($form_state['input'][$identifier][$prefix])) {
-        $form_state['input'][$identifier][$prefix] = $this->value[$prefix];
+        // Ensure these exist.
+        foreach ($granularity as $key) {
+          $form_state['input'][$identifier][$prefix][$key] = NULL;
+        }
       }
     }
     else {
@@ -406,7 +411,7 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
         '#date_label_position' => 'within',
         '#date_year_range' => $this->options['year_range'],
         '#process' => array($type . '_element_process'),
-        '#prefix' => '<div id="' . $id . '-wrapper"><div id="' . $id . '">',
+        '#prefix' => '<div id="' . $id . '-wrapper"><div id="' . $id . '-inside-wrapper">',
         '#suffix' => '</div></div>',
         '#states' => array(
           'visible' => array(
@@ -530,3 +535,4 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
   }
 
 }
+// @codingStandardsIgnoreEnd

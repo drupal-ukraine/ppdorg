@@ -141,8 +141,9 @@ DirectoryIndex index.php index.html index.htm
     </FilesMatch>
   </IfModule>
 </IfModule>
-# Restrict access to YAML files.
-<Files ~ "\.yml$">
-  Order Allow,Deny
-  Deny from All
-</Files>
+
+# Add headers to all responses.
+<IfModule mod_headers.c>
+  # Disable content sniffing, since it's an attack vector.
+  Header always set X-Content-Type-Options nosniff
+</IfModule>
