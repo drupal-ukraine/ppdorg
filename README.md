@@ -1,8 +1,19 @@
 ppdorg project
 ======
 
-ppdorg project is for getting drupal.org statistics for a list of users
+ppdorg project is for getting drupal.org and github.com commits statistics for a list of users
 
+(minimal version of installed Vagrant should be 1.8.1)
+
+You could start your work with 
+
+```
+vagrant up
+vagrant ssh
+```
+If system will ask you a password - use "vagrant" pass phrase.
+
+Drupal project is located at /var/www/docroot folder.
 
 use 
 ```sh
