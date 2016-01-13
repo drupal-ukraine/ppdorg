@@ -41,6 +41,3 @@ function ppdorg_install() {
   user_role_grant_permissions(DRUPAL_AUTHENTICATED_RID, array('access content'));
 }
 
-/**
- * Enable core taxonomy module().
- */
