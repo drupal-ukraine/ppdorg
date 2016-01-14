@@ -210,7 +210,7 @@ function ppgetstat_sync_user_list_submit($form, $form_state) {
   $users_list_tid = $form_state['values']['users_list'];
   $term = taxonomy_term_load($users_list_tid);
   if (!empty($term)) {
-    $field_query = field_get_items('taxonomy_term', $term, 'field_request_query');
+    $field_query = field_get_items('taxonomy_term', $term, 'field_query');
     $variables = array();
     foreach ($field_query as $item) {
       $variables[$item['first']] = $item['second'];
@@ -240,7 +240,7 @@ function ppgetstat_sync_user_list_submit($form, $form_state) {
       );
       batch_set($batch);
     } else {
-      drupal_set_message('Error with getting initial data');
+      drupal_set_message('Error with getting initial data', 'error');
     }
 
   } else {
