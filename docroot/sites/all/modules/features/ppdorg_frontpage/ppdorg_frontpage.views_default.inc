@@ -45,6 +45,14 @@ function ppdorg_frontpage_views_default_views() {
   $handler->display->display_options['fields']['created']['label'] = 'Created';
   $handler->display->display_options['fields']['created']['date_format'] = 'short';
   $handler->display->display_options['fields']['created']['second_date_format'] = 'long';
+  /* Field: Content: User ID */
+  $handler->display->display_options['fields']['field_user_id']['id'] = 'field_user_id';
+  $handler->display->display_options['fields']['field_user_id']['table'] = 'field_data_field_user_id';
+  $handler->display->display_options['fields']['field_user_id']['field'] = 'field_user_id';
+  $handler->display->display_options['fields']['field_user_id']['label'] = 'Drupal Profile';
+  $handler->display->display_options['fields']['field_user_id']['alter']['make_link'] = TRUE;
+  $handler->display->display_options['fields']['field_user_id']['alter']['path'] = 'https://www.drupal.org/user/[field_user_id-value] ';
+  $handler->display->display_options['fields']['field_user_id']['alter']['external'] = TRUE;
   /* Sort criterion: Content: Post date */
   $handler->display->display_options['sorts']['created']['id'] = 'created';
   $handler->display->display_options['sorts']['created']['table'] = 'node';

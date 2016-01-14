@@ -175,3 +175,77 @@ function ppgetstat_reset_form_submit($form, $form_state) {
     $queue->deleteQueue();
   }
 }
+
+/**
+ * Form builder for reset stats form.
+ */
+function ppgetstat_sync_user_list($form, $form_state) {
+  // Getting list of all available users list for analyzing.
+  $user_lists_vocab = taxonomy_vocabulary_machine_name_load('users_list');
+  $terms = taxonomy_get_tree($user_lists_vocab->vid);
+  $options = array(
+    0 => t('- None -'),
+  );
+  foreach ($terms as $term) {
+    $options[$term->tid] = $term->name;
+  }
+  $form['users_list'] = array(
+    '#type' => 'select',
+    '#title' => t('Select users group scan to'),
+    '#options' => $options,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('test request')
+  );
+
+  return $form;
+}
+
+/**
+ * Submit callback for sync user list form
+ */
+function ppgetstat_sync_user_list_submit($form, $form_state) {
+  $users_list_tid = $form_state['values']['users_list'];
+  $term = taxonomy_term_load($users_list_tid);
+  if (!empty($term)) {
+    $field_query = field_get_items('taxonomy_term', $term, 'field_query');
+    $variables = array();
+    foreach ($field_query as $item) {
+      $variables[$item['first']] = $item['second'];
+    }
+
+    $r = _ppgetstat_api_call(
+      'https://www.drupal.org/',
+      'api-d7/user.json',
+      $variables
+    );
+
+    if (!empty($r) && (!empty($r->last))) {
+      $last_url = parse_url($r->last);
+      parse_str($last_url['query'], $params);
+      $page = $params['page'];
+      for ($i=0; $i< $page; $i++) {
+        $operations[] = array(
+          '_ppgetstat_sync_user_list_step',
+          array($variables, $i),
+        );
+      }
+      $batch = array(
+        'operations' => $operations,
+        'finished' => '_ppgetstart_batch_finished',
+        'title' => t('Processing import...'),
+        'init_message' => t('Batch is starting.'),
+      );
+      batch_set($batch);
+    } else {
+      drupal_set_message('Error with getting initial data', 'error');
+    }
+
+  } else {
+    drupal_set_message('Import process could not be started');
+  }
+}
+
+
