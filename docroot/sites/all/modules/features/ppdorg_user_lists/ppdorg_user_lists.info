@@ -1,0 +1,10 @@
+name = ppdorg_user_lists
+core = 7.x
+package = PPDORG
+dependencies[] = double_field
+dependencies[] = features
+dependencies[] = taxonomy
+features[features_api][] = api:2
+features[field_base][] = field_request_query
+features[field_instance][] = taxonomy_term-users_list-field_request_query
+features[taxonomy][] = users_list

@@ -35,8 +35,8 @@ dependencies[] = pp_comparing
 dependencies[] = comparing_page
 dependencies[] = ppdorg_user_content
 dependencies[] = ppgetstat_variables
-dependencies[] = ppdorg_frontpage
+dependencies[] = ppdorg_frontpage<<<<<<< HEAD
 dependencies[] = ppdorg_all_users_feature
 dependencies[] = ukraine_users_feature
-
+dependencies[] = ppdorg_user_lists
 dependencies[] = pp_master
