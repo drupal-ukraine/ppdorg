@@ -590,12 +590,20 @@ function _ppgetstat_api_call($site, $endpoint, $vars, $page = 0) {
  * Batch step function for syncing user list.
  */
 function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
-  $r = _ppgetstat_api_call(
-    'https://www.drupal.org/',
-    'api-d7/user.json',
-    $variables,
-    $page
-  );
+  for ($i = 0; $i < 10; $i++) {
+    $r = _ppgetstat_api_call(
+      'https://www.drupal.org/',
+      'api-d7/user.json',
+      $variables,
+      $page
+    );
+    if (!empty($r)) {
+      break;
+    }
+    // wait for next 10 seconds to retry.
+    sleep(10);
+  }
+
   if (!empty($r)) {
     $list = $r->list;
     $uids = array();
