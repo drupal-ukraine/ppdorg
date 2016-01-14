@@ -623,7 +623,7 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
      ->fetchAll();
     $existed_users = array();
     foreach ($existed_users_query as $item) {
-      $existed_users[] = $existed_users_query->field_data_field_user_id;
+      $existed_users[] = $item->field_user_id_value;
     }
 
     $users_to_add = array_diff($uids, $existed_users);
