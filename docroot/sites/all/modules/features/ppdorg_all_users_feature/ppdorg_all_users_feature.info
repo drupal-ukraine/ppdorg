@@ -1,0 +1,13 @@
+name = PPDORG all users
+description = All uses from drupal.org
+core = 7.x
+package = PPDORG
+version = 7.x-1.0
+dependencies[] = double_field
+dependencies[] = features
+dependencies[] = taxonomy
+features[features_api][] = api:2
+features[field_base][] = field_query
+features[field_instance][] = taxonomy_term-users_list-field_query
+features[taxonomy][] = users_list
+project path = sites/all/modules/features
