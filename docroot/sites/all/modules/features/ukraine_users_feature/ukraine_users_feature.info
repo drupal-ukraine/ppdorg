@@ -1,0 +1,11 @@
+name = Ukraine users
+core = 7.x
+package = PPDORG
+version = 7.x-1.0
+dependencies[] = taxonomy
+dependencies[] = uuid
+dependencies[] = uuid_features
+features[features_api][] = api:2
+features[taxonomy][] = users_list
+features[uuid_term][] = e1bef5a8-bdcc-4fa5-acda-b57d5930f374
+project path = sites/all/modules/features

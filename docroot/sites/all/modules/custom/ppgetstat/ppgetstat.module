@@ -280,6 +280,9 @@ function _ppgetstat_get_code_tracking_urls($data) {
   $days_number = round((REQUEST_TIME - $last_scan) / (6 * 60 * 60));
   $urls = array();
   for ($i = 0; $i < $days_number; $i++) {
+    if ($i > 500) {
+      break;
+    }
     $urls[] = 'https://drupal.org/user/' . $doid . '/track/code?page=' . $i;
   }
   return $urls;
