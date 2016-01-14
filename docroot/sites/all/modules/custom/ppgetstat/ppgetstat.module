@@ -9,7 +9,7 @@ define('PPGETSTAT_USER_NODE_TYPE', 'user');
 // Number of users queued to be scanned per cron run.
 define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 100);
 // Number of calls to drupal.org per cron run.
-define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 100);
+define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 800);
 // If no stats available we scan commits for last half a year.
 define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 6 * 30 * 24 * 60 * 60));
 // We group statistics per week.
@@ -119,7 +119,7 @@ function ppgetstat_get_nick_by_id($id) {
  * Implements hook_cron().
  */
 function ppgetstat_cron() {
-
+  $time_pre = microtime(TRUE);
   // Create items in stats_jobs queue.
   _ppgetstat_cron_createItem_stats_jobs();
 
@@ -131,6 +131,11 @@ function ppgetstat_cron() {
 
   // Remove expired cached pages.
   _ppgetstat_cron_remove_cached_pages();
+
+  $time_post = microtime(TRUE);
+  $exec_time = round($time_post - $time_pre, 2);
+  watchdog('ppgetstat_cron', $exec_time . 's ');
+
 }
 
 /**
