@@ -573,7 +573,7 @@ function _ppgetstat_api_call($site, $endpoint, $vars, $page = 0) {
     $url .= '&page=' . $page;
   }
 
-  $request = drupal_http_request($url);
+  $request = drupal_http_request($url, array('timeout' => 300));
   if ($request->code == 200) {
     $JSON = $request->data;
   } else {
