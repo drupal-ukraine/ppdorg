@@ -8,6 +8,7 @@ dependencies[] = list
 dependencies[] = menu
 dependencies[] = contextual
 dependencies[] = dblog
+dependencies[] = taxonomy
 
 ; Contrib modules
 dependencies[] = admin_menu_toolbar
