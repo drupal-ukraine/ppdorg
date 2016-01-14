@@ -21,7 +21,7 @@ function ppcc_ppgetstat_stats_job($user_node) {
   )->fetchField();
 
   $last_commit_timestamp = variable_get('ppgetstat_ppcc_last_commit_timestamp', array($doid => array()));
-  $last_commit_timestamp[$doid] += array($last_scan_week => 0);
+  $last_commit_timestamp[$doid] = array($last_scan_week => 0);
 
   $last_scan = max(array(
     REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,

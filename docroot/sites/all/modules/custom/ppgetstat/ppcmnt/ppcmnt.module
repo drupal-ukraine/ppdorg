@@ -51,6 +51,9 @@ function _ppcmnt_get_comments_tracking_urls($data) {
   $days_number = round((REQUEST_TIME - $last_scan) / (4 * 60 * 60));
   $urls = array();
   for ($i = 0; $i < $days_number; $i++) {
+    if ($i > 100) {
+      break;
+    }
     $urls[] = 'https://www.drupal.org/user/' . $data['doid'] . '/track?page=' . $i;
   }
 

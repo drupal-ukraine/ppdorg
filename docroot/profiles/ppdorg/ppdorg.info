@@ -8,6 +8,7 @@ dependencies[] = list
 dependencies[] = menu
 dependencies[] = contextual
 dependencies[] = dblog
+dependencies[] = taxonomy
 
 ; Contrib modules
 dependencies[] = admin_menu_toolbar
@@ -19,6 +20,8 @@ dependencies[] = module_filter
 dependencies[] = panels
 dependencies[] = views
 dependencies[] = views_ui
+dependencies[] = double_field
+dependencies[] = uuid_features
 
 ; Custom modules
 dependencies[] = ppgetstat
@@ -33,5 +36,7 @@ dependencies[] = comparing_page
 dependencies[] = ppdorg_user_content
 dependencies[] = ppgetstat_variables
 dependencies[] = ppdorg_frontpage
+dependencies[] = ppdorg_all_users_feature
+dependencies[] = ukraine_users_feature
 
 dependencies[] = pp_master

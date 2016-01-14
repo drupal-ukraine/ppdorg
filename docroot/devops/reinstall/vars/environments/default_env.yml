@@ -18,3 +18,4 @@ env:
     - { name: '$conf["preprocess_css"]', status: true, value: '0' }
     - { name: '$conf["preprocess_js"]', status: true, value: '0' }
     - { name: '$conf["stage_file_proxy_origin"]', status: false, value: "{{ origin_site_url }}" }
+    - { name: '$conf["cron_key"]', status: true, value: "1FBrubk-8XzSxKIuxV-cvbav10sdz5_ENwqw_ajpxgs" }
