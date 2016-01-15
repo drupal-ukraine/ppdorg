@@ -611,11 +611,13 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
 
   if (!empty($r)) {
     $list = $r->list;
-    $uids = array();
+    $users_data = $uids = array();
+
     foreach ($list as $item) {
       $uids[] = $item->uid;
       $users_data[$item->uid] = $item;
     }
+
     $existed_users_query = db_select('field_data_field_user_id', 'u')
      ->fields('u', array('field_user_id_value'))
      ->condition('u.field_user_id_value', $uids, 'IN')
@@ -631,6 +633,28 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
       $node = new stdClass();
       $node->type = 'user';
       node_object_prepare($node);
+
+      $user_organizations = $users_data[$uid]->field_organizations;
+      if (!empty($user_organizations)) {
+        $org_name = array();
+        $org_title = array();
+        foreach ($user_organizations as $org)  {
+          $collection_request = drupal_http_request($org->uri. '.json');
+          if ($collection_request->code == 200) {
+            $collection_data = json_decode($collection_request->data);
+            $org_name[] = $collection_data->field_organization_name;
+            $org_title[] = $collection_data->field_job_title;
+          }
+        }
+        // Processing user companies.
+        foreach ($org_name as $on) {
+          $node->field_organisations['und'][] = _ppgetstat_vocab_term_tid($on, 'company');
+        }
+        // Processing user job titles.
+        foreach ($org_title as $ot) {
+          $node->field_job_titles['und'][] = _ppgetstat_vocab_term_tid($ot, 'job_title');
+        }
+      }
       $node->field_user_id['und'][] = array(
         'value' => $uid,
       );
@@ -641,9 +665,33 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
   } else {
     watchdog('ppdorg_debug', 'Request returned error');
   }
+
   $context['finished'] = 1;
 }
 
-function _ppgetstart_batch_finished() {
+/**
+ * Helper function that generates term id for adding it to user CT term references.
+ */
+function _ppgetstat_vocab_term_tid($name, $vocab_name) {
+  $term = taxonomy_get_term_by_name($name, $vocab_name);
+
+  if (!empty($term->tid)) {
+    return array(
+      'tid' => $term->tid,
+    );
+  } else {
+    $vocab = taxonomy_vocabulary_machine_name_load($vocab_name);
+    return array(
+      'vid' => $vocab->vid,
+      'tid' => 'autocreate',
+      'name' => trim($name),
+    );
+  }
+}
+
+/**
+ * Finish callback for batch process.
+ */
+function _ppgetstat_batch_finished() {
   drupal_set_message('Users import finished');
 }
