@@ -673,18 +673,24 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
  * Helper function that generates term id for adding it to user CT term references.
  */
 function _ppgetstat_vocab_term_tid($name, $vocab_name) {
-  $term = taxonomy_get_term_by_name($name, $vocab_name);
+  $vocab = taxonomy_vocabulary_machine_name_load($vocab_name);
+  $tid = db_select('taxonomy_term_data', 't')
+    ->fields('t', array('tid'))
+    ->condition('t.vid', $vocab->vid)
+    ->condition('t.name', trim(strtolower($name)))
+    ->execute()
+    ->fetchField();
 
-  if (!empty($term->tid)) {
+  if (!empty($tid)) {
     return array(
-      'tid' => $term->tid,
+      'tid' => $tid,
     );
   } else {
-    $vocab = taxonomy_vocabulary_machine_name_load($vocab_name);
+
     return array(
       'vid' => $vocab->vid,
       'tid' => 'autocreate',
-      'name' => trim($name),
+      'name' => trim(strtolower($name)),
     );
   }
 }
