@@ -32,5 +32,6 @@ User may have more than one profile, so we need store all data from all user pro
       'help' => '',
     ),
   );
+  drupal_alter('node_info', $items);
   return $items;
 }

@@ -10,7 +10,7 @@
 function ppdorg_user_content_field_default_field_instances() {
   $field_instances = array();
 
-  // Exported field_instance: 'node-user-body'
+  // Exported field_instance: 'node-user-body'.
   $field_instances['node-user-body'] = array(
     'bundle' => 'user',
     'default_value' => NULL,
@@ -54,7 +54,7 @@ function ppdorg_user_content_field_default_field_instances() {
     ),
   );
 
-  // Exported field_instance: 'node-user-field_github_username'
+  // Exported field_instance: 'node-user-field_github_username'.
   $field_instances['node-user-field_github_username'] = array(
     'bundle' => 'user',
     'default_value' => NULL,
@@ -94,7 +94,81 @@ function ppdorg_user_content_field_default_field_instances() {
     ),
   );
 
-  // Exported field_instance: 'node-user-field_user_id'
+  // Exported field_instance: 'node-user-field_job_titles'.
+  $field_instances['node-user-field_job_titles'] = array(
+    'bundle' => 'user',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'taxonomy',
+        'settings' => array(),
+        'type' => 'taxonomy_term_reference_link',
+        'weight' => 5,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_job_titles',
+    'label' => 'job_titles',
+    'required' => 0,
+    'settings' => array(
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'options',
+      'settings' => array(),
+      'type' => 'options_select',
+      'weight' => 6,
+    ),
+  );
+
+  // Exported field_instance: 'node-user-field_organisations'.
+  $field_instances['node-user-field_organisations'] = array(
+    'bundle' => 'user',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'taxonomy',
+        'settings' => array(),
+        'type' => 'taxonomy_term_reference_link',
+        'weight' => 4,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_organisations',
+    'label' => 'organisations',
+    'required' => 0,
+    'settings' => array(
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'options',
+      'settings' => array(),
+      'type' => 'options_select',
+      'weight' => 5,
+    ),
+  );
+
+  // Exported field_instance: 'node-user-field_user_id'.
   $field_instances['node-user-field_user_id'] = array(
     'bundle' => 'user',
     'default_value' => NULL,
@@ -140,6 +214,8 @@ function ppdorg_user_content_field_default_field_instances() {
   t('Enter all users id belonged to user');
   t('Github username');
   t('User ID');
+  t('job_titles');
+  t('organisations');
 
   return $field_instances;
 }
