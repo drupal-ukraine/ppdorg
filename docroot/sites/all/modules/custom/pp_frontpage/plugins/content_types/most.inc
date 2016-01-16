@@ -33,14 +33,14 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
 
   $query = 'SELECT doid, SUM(items) as counter  FROM {ppgetstat} '
     . 'WHERE type = :type AND timestamp > :timestamp '
-    . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,15';
+    . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,45';
 
   $last_thee_months = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
 
   $types = array(
     'Commits' => PPGETSTAT_TYPE_COMMITS,
     'Comments' => PPGETSTAT_TYPE_COMMENTS,
-    'Core commits' => PPGETSTAT_TYPE_CORE_COMMITS,
+ //   'Core commits' => PPGETSTAT_TYPE_CORE_COMMITS,
     'Github.com activity' => PPGETSTAT_TYPE_GITHUB_ACTIVITY,
   );
   $table_header = array(t('user'), t('counter'));
