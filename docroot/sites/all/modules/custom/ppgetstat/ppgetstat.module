@@ -251,6 +251,38 @@ function _ppgetstats_get_all_users() {
   return array();
 }
 
+/**
+ * Helper function that gets current project ids by d.org ids.
+ * @param $doids
+ */
+function _ppgetstat_get_users_by_doids($doids) {
+  $query = new EntityFieldQuery();
+  if (empty($doids)) {
+    return;
+  }
+
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', PPGETSTAT_USER_NODE_TYPE)
+    ->propertyCondition('status', 1)
+    ->fieldCondition('field_user_id', 'value', $doids, 'IN')
+    ->execute();
+
+  if (empty($result)) {
+    return;
+  }
+
+  $nids = array_keys($result['node']);
+  $nodes = node_load_multiple($nids);
+  $r = array();
+
+  foreach ($nodes as $node) {
+    $field_user_id = field_get_items('node', $node, 'field_user_id');
+    $r[$field_user_id[0]['value']] = $node;
+  }
+
+  return $r;
+}
 
 /**
  * Get the user's node link by drupal.org id.
@@ -542,7 +574,7 @@ function ppgetstat_node_insert($node) {
   if (!isset($node->field_user_id[LANGUAGE_NONE][0]['value'])) {
     return;
   }
-  $queue = DrupalQueue::get('stats_jobs');
+  /*$queue = DrupalQueue::get('stats_jobs');
   // Invoke hook so all modules can use it to provide jobs.
   foreach (module_implements('ppgetstat_stats_job') as $module) {
     $job = module_invoke($module, 'ppgetstat_stats_job', $node);
@@ -552,7 +584,7 @@ function ppgetstat_node_insert($node) {
   }
 
   // Queue scanning jobs.
-  _ppgetstat_cron_processItem_stats_jobs();
+  _ppgetstat_cron_processItem_stats_jobs();*/
 }
 
 /**
@@ -619,20 +651,24 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
     }
 
     $existed_users_query = db_select('field_data_field_user_id', 'u')
-     ->fields('u', array('field_user_id_value'))
+     ->fields('u', array('entity_id','field_user_id_value'))
      ->condition('u.field_user_id_value', $uids, 'IN')
      ->execute()
      ->fetchAll();
     $existed_users = array();
     foreach ($existed_users_query as $item) {
-      $existed_users[] = $item->field_user_id_value;
+      $existed_users[$item->field_user_id_value] = $item->entity_id;
     }
 
-    $users_to_add = array_diff($uids, $existed_users);
-    foreach ($users_to_add as $uid) {
-      $node = new stdClass();
-      $node->type = 'user';
-      node_object_prepare($node);
+    foreach ($uids as $uid) {
+      // If user is not tracked yet - creating new empty node.
+      if (!in_array($uid, $existed_users)) {
+        $node = new stdClass();
+        $node->type = 'user';
+        node_object_prepare($node);
+      } else {
+        $node = node_load($existed_users[$uid]);
+      }
 
       $user_organizations = $users_data[$uid]->field_organizations;
       if (!empty($user_organizations)) {
