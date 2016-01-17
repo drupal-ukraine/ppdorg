@@ -33,7 +33,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
 
   $query = 'SELECT doid, SUM(items) as counter  FROM {ppgetstat} '
     . 'WHERE type = :type AND timestamp > :timestamp '
-    . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,45';
+    . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,100';
 
   $last_thee_months = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
 
@@ -43,16 +43,34 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
  //   'Core commits' => PPGETSTAT_TYPE_CORE_COMMITS,
     'Github.com activity' => PPGETSTAT_TYPE_GITHUB_ACTIVITY,
   );
-  $table_header = array(t('user'), t('counter'));
+  $table_header = array(t('user'), t('company') , t('counter'), t('D.org link'));
   foreach ($types as $title => $data_type) {
     $query_results = db_query($query, array(
       ':type' => $data_type,
       ':timestamp' => $last_thee_months,
     ))->fetchAllKeyed();
+    $doids = array_keys($query_results);
 
+    $user_nodes = _ppgetstat_get_users_by_doids($doids);
     $table_data = array();
     foreach ($query_results as $doid => $counter) {
-      $table_data[] = array(_ppgetstat_get_node_link_by_doid($doid), $counter);
+      $user_node = $user_nodes[$doid];
+      if (!empty($user_node->field_organisations)) {
+        $company_titles = array();
+        $companies = field_get_items('node', $user_node, 'field_organisations');
+        foreach ($companies as $company) {
+          $company_titles[] = taxonomy_term_load($company['tid'])->name;
+        }
+        $company_column = implode(',', $company_titles);
+      } else {
+        $company_column = '';
+      }
+      $table_data[] = array(
+        _ppgetstat_get_node_link_by_doid($doid),
+        $company_column ,
+        $counter,
+        l('http://drupal.org/user/' . $doid ,'http://drupal.org/user/' . $doid, array('external' => true))
+        );
     }
 
     $output .= '<h3>' . t($title) . '</h3>';
