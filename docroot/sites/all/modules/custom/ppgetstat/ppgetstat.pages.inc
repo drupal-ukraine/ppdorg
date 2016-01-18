@@ -226,7 +226,7 @@ function ppgetstat_sync_user_list_submit($form, $form_state) {
       $last_url = parse_url($r->last);
       parse_str($last_url['query'], $params);
       $page = $params['page'];
-      for ($i=0; $i< $page; $i++) {
+      for ($i=($page-1); $i >= 0; $i--) {
         $operations[] = array(
           '_ppgetstat_sync_user_list_step',
           array($variables, $i),
@@ -234,7 +234,7 @@ function ppgetstat_sync_user_list_submit($form, $form_state) {
       }
       $batch = array(
         'operations' => $operations,
-        'finished' => '_ppgetstart_batch_finished',
+        'finished' => '_ppgetstat_batch_finished',
         'title' => t('Processing import...'),
         'init_message' => t('Batch is starting.'),
       );
