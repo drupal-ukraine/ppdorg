@@ -416,8 +416,9 @@ function _ppgetstat_parse_commits($page_content, $data) {
   $commits_counter = 0;
 
   foreach ($strings as $string) {
-    $commit_timestamp = _ppgetstat_parse_commits_page_date($string->html());
-
+    $html = $string->html();
+    $commit_timestamp = _ppgetstat_parse_commits_page_date($html);
+    $commit_hash = _ppgetstat_parse_commits_page_hash($html);
     if ($commit_timestamp <= $last_scan) {
       break;
     }
@@ -436,9 +437,9 @@ function _ppgetstat_parse_commits($page_content, $data) {
     }
 
     if (!isset($commits_counter_array[$period_timestamp])) {
-      $commits_counter_array[$period_timestamp] = 0;
+      // $commits_counter_array[$period_timestamp] = 0;
     }
-    $commits_counter_array[$period_timestamp]++;
+    $commits_counter_array[$period_timestamp][] = $commit_hash;
     $commits_counter++;
   }
 
@@ -460,8 +461,8 @@ function _ppgetstat_save_counters($counters_array, $doid) {
   unset($counters_array['#type']);
 
   // SQL queries to update counters.
-  $periods = array_keys($counters_array);
-  $db_records = db_query('SELECT timestamp, items FROM {ppgetstat} WHERE doid = :doid AND timestamp IN (:periods) AND type = :type',
+  /*$periods = array_keys($counters_array);
+  $db_records = db_query('SELECT timestamp, items, hash FROM {ppgetstat} WHERE doid = :doid AND timestamp IN (:periods) AND type = :type',
     array(
       ':doid' => $doid,
       ':periods' => $periods,
@@ -472,15 +473,26 @@ function _ppgetstat_save_counters($counters_array, $doid) {
     $keys = array();
     if (isset($db_records[$period])) {
       $items += $db_records[$period];
-      $keys = array('doid', 'timestamp', 'type');
+      $keys = array('doid', 'timestamp', 'type', 'hash');
     }
     $record = array(
       'doid' => $doid,
       'items' => $items,
       'timestamp' => $period,
       'type' => $type,
+      'hash' => $hash,
     );
     drupal_write_record('ppgetstat', $record, $keys);
+  }
+*/
+  foreach ($counters_array as $period => &$commits) {
+    foreach ($commits as &$hash) {
+      db_merge('ppgetstat')
+        ->key(array('doid' => $doid, 'hash' => $hash))
+        ->fields(array('type' => $type, 'timestamp' => $period, 'items' => 1))
+        ->execute();
+    }
+
   }
 }
 
@@ -501,6 +513,19 @@ function _ppgetstat_parse_commits_page_date($original_string) {
     throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $original_string)));
   }
   return $timestamp;
+}
+
+/**
+ * Parse string '<h3><a href="/project/apachesolr">Apache Solr Search</a>: <a href="/commitlog/commit/4838/9d8d6276d4246a0d2651b00bbd05786baa1324c9">October 7, 2013 20:40</a></h3>'.
+ */
+function _ppgetstat_parse_commits_page_hash($original_string) {
+
+  preg_match("/.*\/commitlog\/commit\/.*\/(.*)\">/", $original_string, $match);
+  if (!isset($match[1])) {
+    throw new Exception(t('Cannot parse string %string to get commit hash.', array('%string' => $original_string)));
+  }
+
+  return $match[1];
 }
 
 /**
