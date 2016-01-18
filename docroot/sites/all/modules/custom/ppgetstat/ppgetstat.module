@@ -253,14 +253,15 @@ function _ppgetstats_get_all_users() {
 
 /**
  * Helper function that gets current project ids by d.org ids.
- * @param $doids
+ * @param array $doids
+ * @return assoc array with drupal.org id => $user node object.
  */
 function _ppgetstat_get_users_by_doids($doids) {
-  $query = new EntityFieldQuery();
+
   if (empty($doids)) {
     return;
   }
-
+  $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
     ->entityCondition('bundle', PPGETSTAT_USER_NODE_TYPE)
@@ -574,7 +575,7 @@ function ppgetstat_node_insert($node) {
   if (!isset($node->field_user_id[LANGUAGE_NONE][0]['value'])) {
     return;
   }
-  /*$queue = DrupalQueue::get('stats_jobs');
+  $queue = DrupalQueue::get('stats_jobs');
   // Invoke hook so all modules can use it to provide jobs.
   foreach (module_implements('ppgetstat_stats_job') as $module) {
     $job = module_invoke($module, 'ppgetstat_stats_job', $node);
@@ -584,7 +585,7 @@ function ppgetstat_node_insert($node) {
   }
 
   // Queue scanning jobs.
-  _ppgetstat_cron_processItem_stats_jobs();*/
+  _ppgetstat_cron_processItem_stats_jobs();
 }
 
 /**
@@ -697,7 +698,7 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
       $node->title = $users_data[$uid]->name;
       node_save($node);
     }
-    watchdog('ppdorg_debug', print_r($users_to_add, 1));
+
   } else {
     watchdog('ppdorg_debug', 'Request returned error');
   }

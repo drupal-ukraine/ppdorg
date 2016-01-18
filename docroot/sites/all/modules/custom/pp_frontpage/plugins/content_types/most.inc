@@ -55,6 +55,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
     $table_data = array();
     foreach ($query_results as $doid => $counter) {
       $user_node = $user_nodes[$doid];
+      $company_column = '';
       if (!empty($user_node->field_organisations)) {
         $company_titles = array();
         $companies = field_get_items('node', $user_node, 'field_organisations');
@@ -62,8 +63,6 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
           $company_titles[] = taxonomy_term_load($company['tid'])->name;
         }
         $company_column = implode(',', $company_titles);
-      } else {
-        $company_column = '';
       }
       $table_data[] = array(
         _ppgetstat_get_node_link_by_doid($doid),
