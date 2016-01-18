@@ -195,6 +195,12 @@ function ppgetstat_sync_user_list($form, $form_state) {
     '#options' => $options,
   );
 
+  $form['direct_user'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Direct user rescan'),
+    '#description' => t('If this field is not empty, only this user would be updated'),
+  );
+
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('test request')
@@ -207,44 +213,64 @@ function ppgetstat_sync_user_list($form, $form_state) {
  * Submit callback for sync user list form
  */
 function ppgetstat_sync_user_list_submit($form, $form_state) {
-  $users_list_tid = $form_state['values']['users_list'];
-  $term = taxonomy_term_load($users_list_tid);
-  if (!empty($term)) {
-    $field_query = field_get_items('taxonomy_term', $term, 'field_query');
-    $variables = array();
-    foreach ($field_query as $item) {
-      $variables[$item['first']] = $item['second'];
-    }
-
+  $direct_user = $form_state['values']['direct_user'];
+  if (!empty($direct_user)) {
     $r = _ppgetstat_api_call(
       'https://www.drupal.org/',
       'api-d7/user.json',
-      $variables
+      array(
+        'uid' => $direct_user
+      )
+    );
+    $users_data = array(
+      $r->list[0]->uid => $r->list[0]
     );
 
-    if (!empty($r) && (!empty($r->last))) {
-      $last_url = parse_url($r->last);
-      parse_str($last_url['query'], $params);
-      $page = $params['page'];
-      for ($i=($page-1); $i >= 0; $i--) {
-        $operations[] = array(
-          '_ppgetstat_sync_user_list_step',
-          array($variables, $i),
-        );
-      }
-      $batch = array(
-        'operations' => $operations,
-        'finished' => '_ppgetstat_batch_finished',
-        'title' => t('Processing import...'),
-        'init_message' => t('Batch is starting.'),
-      );
-      batch_set($batch);
-    } else {
-      drupal_set_message('Error with getting initial data', 'error');
-    }
+    _ppgetstat_process_dorg_users($users_data, array($r->list[0]->uid));
+    drupal_set_message('User has been updated');
 
   } else {
-    drupal_set_message('Import process could not be started');
+    $users_list_tid = $form_state['values']['users_list'];
+    $term = taxonomy_term_load($users_list_tid);
+    if (!empty($term)) {
+      $field_query = field_get_items('taxonomy_term', $term, 'field_query');
+      $variables = array();
+      foreach ($field_query as $item) {
+        $variables[$item['first']] = $item['second'];
+      }
+
+      $r = _ppgetstat_api_call(
+        'https://www.drupal.org/',
+        'api-d7/user.json',
+        $variables
+      );
+
+      if (!empty($r) && (!empty($r->last))) {
+        $last_url = parse_url($r->last);
+        parse_str($last_url['query'], $params);
+        $page = $params['page'];
+        for ($i = ($page - 1); $i >= 0; $i--) {
+          $operations[] = array(
+            '_ppgetstat_sync_user_list_step',
+            array($variables, $i),
+          );
+        }
+        $batch = array(
+          'operations' => $operations,
+          'finished' => '_ppgetstat_batch_finished',
+          'title' => t('Processing import...'),
+          'init_message' => t('Batch is starting.'),
+        );
+        batch_set($batch);
+      }
+      else {
+        drupal_set_message('Error with getting initial data', 'error');
+      }
+
+    }
+    else {
+      drupal_set_message('Import process could not be started');
+    }
   }
 }
 

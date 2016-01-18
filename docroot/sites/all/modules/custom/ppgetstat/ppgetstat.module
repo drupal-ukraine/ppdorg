@@ -55,7 +55,7 @@ function ppgetstat_menu() {
   );
 
   $items['admin/config/services/sync_user_list'] = array(
-    'title' => 'Retrieive users by user list',
+    'title' => 'Get users from Drupal.org',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('ppgetstat_sync_user_list'),
     'access arguments' => array('administer site configuration'),
@@ -251,6 +251,39 @@ function _ppgetstats_get_all_users() {
   return array();
 }
 
+/**
+ * Helper function that gets current project ids by d.org ids.
+ * @param array $doids
+ * @return assoc array with drupal.org id => $user node object.
+ */
+function _ppgetstat_get_users_by_doids($doids) {
+
+  if (empty($doids)) {
+    return;
+  }
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', PPGETSTAT_USER_NODE_TYPE)
+    ->propertyCondition('status', 1)
+    ->fieldCondition('field_user_id', 'value', $doids, 'IN')
+    ->execute();
+
+  if (empty($result)) {
+    return;
+  }
+
+  $nids = array_keys($result['node']);
+  $nodes = node_load_multiple($nids);
+  $r = array();
+
+  foreach ($nodes as $node) {
+    $field_user_id = field_get_items('node', $node, 'field_user_id');
+    $r[$field_user_id[0]['value']] = $node;
+  }
+
+  return $r;
+}
 
 /**
  * Get the user's node link by drupal.org id.
@@ -643,55 +676,72 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
       $users_data[$item->uid] = $item;
     }
 
-    $existed_users_query = db_select('field_data_field_user_id', 'u')
-     ->fields('u', array('field_user_id_value'))
-     ->condition('u.field_user_id_value', $uids, 'IN')
-     ->execute()
-     ->fetchAll();
-    $existed_users = array();
-    foreach ($existed_users_query as $item) {
-      $existed_users[] = $item->field_user_id_value;
-    }
+    // Process list and add/update user nodes.
+    _ppgetstat_process_dorg_users($users_data, $uids);
 
-    $users_to_add = array_diff($uids, $existed_users);
-    foreach ($users_to_add as $uid) {
-      $node = new stdClass();
-      $node->type = 'user';
-      node_object_prepare($node);
-
-      $user_organizations = $users_data[$uid]->field_organizations;
-      if (!empty($user_organizations)) {
-        $org_name = array();
-        $org_title = array();
-        foreach ($user_organizations as $org)  {
-          $collection_request = drupal_http_request($org->uri. '.json');
-          if ($collection_request->code == 200) {
-            $collection_data = json_decode($collection_request->data);
-            $org_name[] = $collection_data->field_organization_name;
-            $org_title[] = $collection_data->field_job_title;
-          }
-        }
-        // Processing user companies.
-        foreach ($org_name as $on) {
-          $node->field_organisations['und'][] = _ppgetstat_vocab_term_tid($on, 'company');
-        }
-        // Processing user job titles.
-        foreach ($org_title as $ot) {
-          $node->field_job_titles['und'][] = _ppgetstat_vocab_term_tid($ot, 'job_title');
-        }
-      }
-      $node->field_user_id['und'][] = array(
-        'value' => $uid,
-      );
-      $node->title = $users_data[$uid]->name;
-      node_save($node);
-    }
-    watchdog('ppdorg_debug', print_r($users_to_add, 1));
   } else {
     watchdog('ppdorg_debug', 'Request returned error');
   }
 
   $context['finished'] = 1;
+}
+
+/**
+ * Helper function that process d.org users list and add/update that object to
+ * user nodes.
+ * @param $users_data
+ * @param $doids
+ * @throws \Exception
+ */
+function _ppgetstat_process_dorg_users($users_data, $doids) {
+
+  $existed_users_query = db_select('field_data_field_user_id', 'u')
+    ->fields('u', array('entity_id','field_user_id_value'))
+    ->condition('u.field_user_id_value', $doids, 'IN')
+    ->execute()
+    ->fetchAll();
+  $existed_users = array();
+  foreach ($existed_users_query as $item) {
+    $existed_users[$item->field_user_id_value] = $item->entity_id;
+  }
+
+  foreach ($doids as $uid) {
+    // If user is not tracked yet - creating new empty node.
+    if (!in_array($uid, $existed_users)) {
+      $node = new stdClass();
+      $node->type = 'user';
+      node_object_prepare($node);
+    } else {
+      $node = node_load($existed_users[$uid]);
+    }
+
+    $user_organizations = $users_data[$uid]->field_organizations;
+    if (!empty($user_organizations)) {
+      $org_name = array();
+      $org_title = array();
+      foreach ($user_organizations as $org)  {
+        $collection_request = drupal_http_request($org->uri. '.json');
+        if ($collection_request->code == 200) {
+          $collection_data = json_decode($collection_request->data);
+          $org_name[] = $collection_data->field_organization_name;
+          $org_title[] = $collection_data->field_job_title;
+        }
+      }
+      // Processing user companies.
+      foreach ($org_name as $on) {
+        $node->field_organisations['und'][] = _ppgetstat_vocab_term_tid($on, 'company');
+      }
+      // Processing user job titles.
+      foreach ($org_title as $ot) {
+        $node->field_job_titles['und'][] = _ppgetstat_vocab_term_tid($ot, 'job_title');
+      }
+    }
+    $node->field_user_id['und'][] = array(
+      'value' => $uid,
+    );
+    $node->title = $users_data[$uid]->name;
+    node_save($node);
+  }
 }
 
 /**
