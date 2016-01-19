@@ -60,7 +60,7 @@ function _pppcmnt_load_the_data($node) {
 
   $do_uid = $node->field_user_id[LANGUAGE_NONE][0]['value'];
 
-  $db_data = db_query('SELECT timestamp, items FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC',
+  $db_data = db_query('SELECT timestamp, COUNT(items) FROM {ppgetstat} WHERE doid = :doid AND type = :type GROUP BY timestamp ORDER BY timestamp DESC',
     array(':doid' => $do_uid, ':type' => PPGETSTAT_TYPE_COMMENTS)
   )->fetchAllKeyed();
 
