@@ -411,6 +411,8 @@ function _ppgetstat_fetch_page($url) {
     $url = $filepath;
   }
 
+  // This hack should be debugged. Can't really find where improper url generated.
+  $url = preg_replace("/comment\?/", "comment.json?", $url);
   $content = file_get_contents($url);
 
   if ($url != $filepath) {
