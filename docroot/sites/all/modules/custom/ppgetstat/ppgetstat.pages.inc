@@ -234,7 +234,7 @@ function ppgetstat_sync_user_list_submit($form, $form_state) {
     $term = taxonomy_term_load($users_list_tid);
     if (!empty($term)) {
       $field_query = field_get_items('taxonomy_term', $term, 'field_query');
-      $variables = array();
+      $variables = array('limit' => 7);
       foreach ($field_query as $item) {
         $variables[$item['first']] = $item['second'];
       }

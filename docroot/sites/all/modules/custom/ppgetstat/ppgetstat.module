@@ -313,16 +313,29 @@ function _ppgetstat_get_node_link_by_doid($doid) {
 function _ppgetstat_get_code_tracking_urls($data) {
   $last_scan = $data['last_scan'];
   $doid = $data['doid'];
-  // In worst scenario we expect person to do one page (25 commits)
-  // of commits every six hours.
-  $days_number = round((REQUEST_TIME - $last_scan) / (6 * 60 * 60));
+  // Number of pages to scan before check it is empty.
+  $pages_block = 7;
   $urls = array();
-  for ($i = 0; $i < $days_number; $i++) {
-    if ($i > 100) {
-      break;
+
+  $first_url = 'https://drupal.org/user/' . urlencode($doid) . '/track/code?page=0';
+  $content = _ppgetstat_fetch_page($first_url);
+  $start = 0;
+    if (strpos($content, 'commitlog')) {
+    for ($i = $start; $i <= ($start + $pages_block); $i++) {
+      if ($i == ($start + $pages_block)) {
+        $first_url = 'https://drupal.org/user/' . urlencode($doid) . '/track/code?page=' . $i;
+        $content = _ppgetstat_fetch_page($first_url);
+        if (!strpos($content, 'commitlog')) {
+          return $urls;
+        }
+        else {
+          $start = $start + $pages_block;
+        }
+      }
+      $urls[] = 'https://drupal.org/user/' . urlencode($doid) . '/track/code?page=' . $i;
     }
-    $urls[] = 'https://drupal.org/user/' . $doid . '/track/code?page=' . $i;
   }
+
   return $urls;
 }
 
@@ -392,19 +405,28 @@ function _ppgetstat_cleanup_dorg_scrapping_queue($id) {
 function _ppgetstat_fetch_page($url) {
   $time_pre = microtime(TRUE);
 
+  // This hack should be debugged. Can't really find where improper url generated.
+  $url = preg_replace("/comment\?/", "comment.json?", $url);
+  $url = preg_replace("/comment.json\?name=/", "comment.json?author=", $url);
   $filename = preg_replace("/[^A-Za-z0-9]/", '-', $url) . '.html';
   $filepath = file_default_scheme() . '://page_cache/' . $filename;
-  if (file_exists($filepath)) {
-    $url = $filepath;
-  }
+  $cache = cache_get($filepath);
+  $content = isset($cache->data) ? $cache->data : NULL;
+  if (!$content) {
+    if (file_exists($filepath)) {
+      $url = $filepath;
+    }
 
-  $content = file_get_contents($url);
+    $content = file_get_contents($url);
 
-  if ($url != $filepath) {
-    if (file_put_contents($filepath, $content) === FALSE) {
-      watchdog('ppgetstat', 'Can\'t write cache file %file.', array('%file' => $filepath), WATCHDOG_ERROR);
+    if ($url != $filepath) {
+      if (file_put_contents($filepath, $content) === FALSE) {
+        watchdog('ppgetstat', 'Can\'t write cache file %file.', array('%file' => $filepath), WATCHDOG_ERROR);
+      }
+      else cache_set($filepath, $content);
     }
   }
+
 
   $time_post = microtime(TRUE);
   $exec_time = round($time_post - $time_pre, 2);
@@ -493,31 +515,6 @@ function _ppgetstat_save_counters($counters_array, $doid) {
   $type = $counters_array['#type'];
   unset($counters_array['#type']);
 
-  // SQL queries to update counters.
-  /*$periods = array_keys($counters_array);
-  $db_records = db_query('SELECT timestamp, items, hash FROM {ppgetstat} WHERE doid = :doid AND timestamp IN (:periods) AND type = :type',
-    array(
-      ':doid' => $doid,
-      ':periods' => $periods,
-      ':type' => $type,
-    )
-  )->fetchAllKeyed();
-  foreach ($counters_array as $period => &$items) {
-    $keys = array();
-    if (isset($db_records[$period])) {
-      $items += $db_records[$period];
-      $keys = array('doid', 'timestamp', 'type', 'hash');
-    }
-    $record = array(
-      'doid' => $doid,
-      'items' => $items,
-      'timestamp' => $period,
-      'type' => $type,
-      'hash' => $hash,
-    );
-    drupal_write_record('ppgetstat', $record, $keys);
-  }
-*/
   foreach ($counters_array as $period => &$commits) {
     foreach ($commits as &$hash) {
       db_merge('ppgetstat')
@@ -639,7 +636,7 @@ function _ppgetstat_api_call($site, $endpoint, $vars, $page = 0) {
     $url .= '&page=' . $page;
   }
 
-  $request = drupal_http_request($url, array('timeout' => 300));
+  $request = drupal_http_request($url, array('timeout' => 3000));
   if ($request->code == 200) {
     $JSON = $request->data;
   } else {

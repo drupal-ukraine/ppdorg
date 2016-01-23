@@ -33,7 +33,7 @@ function ppcmnt_ppgetstat_stats_job($user_node) {
 
   $job = array(
     'generate_urls_callback' => '_ppcmnt_get_comments_tracking_urls',
-    'parse_pages_callback' => '_ppcmnt_parse_posts_list',
+    'parse_pages_callback' => '_ppcmnt_parse_post_page',
     'doid' => $doid,
     'do_nickname' => $user_node->title,
     'last_scan' => $last_scan,
@@ -46,15 +46,22 @@ function ppcmnt_ppgetstat_stats_job($user_node) {
  */
 function _ppcmnt_get_comments_tracking_urls($data) {
   $last_scan = $data['last_scan'];
+  $cmt_zero_page = _ppgetstat_fetch_page('https://www.drupal.org/api-d7/comment.json?author=' . urlencode($data['doid']));
+  $user_data = json_decode($cmt_zero_page);
+  $count = parse_url($user_data->last);
+  parse_str($count['query'], $query);
+  if (empty($user_data->list)) {
+    return NULL;
+  }
+  if ($query['page'] == 0) {
+    return array($user_data->self);
+  }
   // In worst scenario we expect one page of posts per four hours.
   // See webchick as example https://www.drupal.org/user/24967/track
   $days_number = round((REQUEST_TIME - $last_scan) / (4 * 60 * 60));
   $urls = array();
-  for ($i = 0; $i < $days_number; $i++) {
-    if ($i > 100) {
-      break;
-    }
-    $urls[] = 'https://www.drupal.org/user/' . $data['doid'] . '/track?page=' . $i;
+  for ($i = 0; $i <= (int)$query['page']; $i++) {
+    $urls[] = "https://www.drupal.org/api-d7/comment.json?name=" . urlencode($data['doid']) . "&page=" . $i;
   }
 
   return $urls;
@@ -136,65 +143,25 @@ function _ppcmnt_parse_posts_list($page_content, $data) {
  * Parse post page for comments.
  */
 function _ppcmnt_parse_post_page($page_content, $data) {
-  $nickname = $data['do_nickname'];
-  $last_scan = $data['last_scan'];
-  if (empty($page_content)) {
-    throw new Exception('Empty page content.');
-  }
 
-  $comment_elements = htmlqp($page_content, '.comment .submitted');
+  $user_data = json_decode($page_content);
+  $count = count($user_data->list);
 
-  $first_commit_timestamp = TRUE;
-  $comment_counter = 0;
-  $comments_counter_array = array();
+  $comments_counter_array = [];
+  $list = &$user_data->list;
 
-  foreach ($comment_elements as $comment_element) {
-    // Extract comment's date.
-    $comment_element_date = clone $comment_element;
-    $comment_date_string = $comment_element_date->find('time')->attr('datetime');
-    $comment_timestamp = strtotime($comment_date_string);
-
-    if (empty($comment_timestamp)) {
-      throw new Exception(t('Cannot parse string %string to timestamp.', array('%string' => $comment_date_string)));
-    }
-
-    if ($comment_timestamp <= $last_scan) {
-      return FALSE;
-    }
-
-    // Extract comment's author nickname.
-    $comment_element_nickname = clone $comment_element;
-    $comment_nickname = $comment_element_nickname->find('a.username')->innerHTML();
-
-    if ($comment_nickname != $nickname) {
+  $end = REQUEST_TIME - variable_get('ppgetstat_stats_period');
+  for ($i = ($count - 1); $i >= 0; $i--) {
+    if ($list[$i]->created < $end) {
       continue;
     }
-
-    $period_timestamp = $comment_timestamp - ($comment_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
-    $last_comment = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array($data['doid'] => array($period_timestamp => 0)));
-
-    // Save latest commit's date per week into variable.
-    if ($first_commit_timestamp || empty($last_comment[$data['doid']][$period_timestamp])) {
-      $first_commit_timestamp = FALSE;
-
-      if (empty($last_comment[$data['doid']][$period_timestamp]) || ($comment_timestamp > $last_comment[$data['doid']][$period_timestamp])) {
-        $last_comment[$data['doid']][$period_timestamp] = $comment_timestamp;
-        variable_set('ppgetstat_ppcmnt_last_comment_timestamp', $last_comment);
-      }
-    }
-
-    if (!isset($comments_counter_array[$period_timestamp])) {
-      $comments_counter_array[$period_timestamp] = 0;
-    }
-    $comments_counter_array[$period_timestamp]++;
-    $comment_counter++;
+    $period_timestamp = $list[$i]->created - ($list[$i]->created % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    $comments_counter_array[$period_timestamp][] = $list[$i]->cid;
   }
 
-  if ($comment_counter == 0) {
-    return $comment_counter;
+  if (count($comments_counter_array) != 0) {
+    $comments_counter_array['#type'] = PPGETSTAT_TYPE_COMMENTS;
   }
-
-  $comments_counter_array['#type'] = PPGETSTAT_TYPE_COMMENTS;
 
   return $comments_counter_array;
 }

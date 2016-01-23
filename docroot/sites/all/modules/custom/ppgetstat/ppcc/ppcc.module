@@ -14,6 +14,7 @@ define('PPGETSTAT_CORE_COMMITS_PAGES_PER_DAY', 10);
  * Implements hook_ppgetstat_stats_job().
  */
 function ppcc_ppgetstat_stats_job($user_node) {
+  // @todo fix core commits parser.
   return;
   $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
 
