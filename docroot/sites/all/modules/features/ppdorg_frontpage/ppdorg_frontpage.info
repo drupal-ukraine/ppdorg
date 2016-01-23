@@ -1,6 +1,7 @@
 name = PPDORG frontpage
 core = 7.x
 package = PPDORG
+version = 7.x-1.0
 dependencies[] = page_manager
 dependencies[] = strongarm
 dependencies[] = views
@@ -12,5 +13,6 @@ features[features_api][] = api:2
 features[page_manager_pages][] = homepage
 features[variable][] = site_frontpage
 features[views_view][] = top_companies
+features[views_view][] = top_positions
 features[views_view][] = users
 features_exclude[dependencies][ctools] = ctools
