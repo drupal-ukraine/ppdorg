@@ -67,7 +67,7 @@ function ppdorg_frontpage_default_page_manager_pages() {
     $pane->panel = 'right';
     $pane->type = 'adduser';
     $pane->subtype = 'adduser';
-    $pane->shown = TRUE;
+    $pane->shown = FALSE;
     $pane->access = array();
     $pane->configuration = array();
     $pane->cache = array();
