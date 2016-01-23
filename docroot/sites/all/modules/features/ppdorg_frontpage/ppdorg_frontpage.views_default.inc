@@ -161,7 +161,7 @@ function ppdorg_frontpage_views_default_views() {
   $handler->display->display_options['fields']['name']['alter']['word_boundary'] = FALSE;
   $handler->display->display_options['fields']['name']['alter']['ellipsis'] = FALSE;
   $handler->display->display_options['fields']['name']['element_label_colon'] = FALSE;
-  $handler->display->display_options['fields']['name']['empty'] = 'There is no company attached';
+  $handler->display->display_options['fields']['name']['empty'] = 'There are no positions attached';
   $handler->display->display_options['fields']['name']['link_to_taxonomy'] = TRUE;
   /* Field: COUNT(Content: Title) */
   $handler->display->display_options['fields']['title']['id'] = 'title';
