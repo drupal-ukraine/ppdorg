@@ -405,21 +405,28 @@ function _ppgetstat_cleanup_dorg_scrapping_queue($id) {
 function _ppgetstat_fetch_page($url) {
   $time_pre = microtime(TRUE);
 
-  $filename = preg_replace("/[^A-Za-z0-9]/", '-', $url) . '.html';
-  $filepath = file_default_scheme() . '://page_cache/' . $filename;
-  if (file_exists($filepath)) {
-    $url = $filepath;
-  }
-
   // This hack should be debugged. Can't really find where improper url generated.
   $url = preg_replace("/comment\?/", "comment.json?", $url);
-  $content = file_get_contents($url);
+  $url = preg_replace("/comment.json\?name=/", "comment.json?author=", $url);
+  $filename = preg_replace("/[^A-Za-z0-9]/", '-', $url) . '.html';
+  $filepath = file_default_scheme() . '://page_cache/' . $filename;
+  $cache = cache_get($filepath);
+  $content = isset($cache->data) ? $cache->data : NULL;
+  if (!$content) {
+    if (file_exists($filepath)) {
+      $url = $filepath;
+    }
 
-  if ($url != $filepath) {
-    if (file_put_contents($filepath, $content) === FALSE) {
-      watchdog('ppgetstat', 'Can\'t write cache file %file.', array('%file' => $filepath), WATCHDOG_ERROR);
+    $content = file_get_contents($url);
+
+    if ($url != $filepath) {
+      if (file_put_contents($filepath, $content) === FALSE) {
+        watchdog('ppgetstat', 'Can\'t write cache file %file.', array('%file' => $filepath), WATCHDOG_ERROR);
+      }
+      else cache_set($filepath, $content);
     }
   }
+
 
   $time_post = microtime(TRUE);
   $exec_time = round($time_post - $time_pre, 2);
