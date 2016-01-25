@@ -22,6 +22,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
   $block = new stdClass();
   $block->module = 'pp_frontpage';
   $block->title = t('Most active users');
+  $output = '';
 
   $cache = cache_get(__FUNCTION__);
   if (!empty($cache)) {
