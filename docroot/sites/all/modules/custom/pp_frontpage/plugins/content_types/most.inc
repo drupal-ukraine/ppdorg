@@ -29,8 +29,6 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
     return $block;
   }
 
-  $output = t('Statistics for last three months');
-
   $query = 'SELECT doid, SUM(items) as counter  FROM {ppgetstat} '
     . 'WHERE type = :type AND timestamp > :timestamp '
     . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,100';
