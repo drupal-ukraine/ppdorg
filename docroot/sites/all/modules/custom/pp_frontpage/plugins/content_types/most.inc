@@ -70,7 +70,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
         );
     }
 
-    $output = '<h3>' . t($title) . '</h3>';
+    $output .= '<h3>' . t($title) . '</h3>';
     $output .= theme('table', array('header' => $table_header, 'rows' => $table_data));
   }
 
