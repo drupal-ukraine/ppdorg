@@ -1,0 +1,114 @@
+/* line 1, ../sass/style.scss */
+#logobar {
+  width: 80px;
+  margin: 20px auto;
+  text-align: center;
+}
+
+/* line 7, ../sass/style.scss */
+table {
+  font-family: Arial, Helvetica, sans-serif;
+}
+/* line 9, ../sass/style.scss */
+table th {
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* line 16, ../sass/style.scss */
+.bs-callout {
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid #eee;
+  border-left-width: 5px;
+  border-radius: 3px;
+}
+
+/* line 23, ../sass/style.scss */
+.bs-callout h4 {
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+
+/* line 27, ../sass/style.scss */
+.bs-callout p:last-child {
+  margin-bottom: 0;
+}
+
+/* line 30, ../sass/style.scss */
+.bs-callout code {
+  border-radius: 3px;
+}
+
+/* line 33, ../sass/style.scss */
+.bs-callout + .bs-callout {
+  margin-top: -5px;
+}
+
+/* line 36, ../sass/style.scss */
+.bs-callout-default {
+  border-left-color: #777;
+}
+
+/* line 39, ../sass/style.scss */
+.bs-callout-default h4 {
+  color: #777;
+}
+
+/* line 42, ../sass/style.scss */
+.bs-callout-primary {
+  border-left-color: #428bca;
+}
+
+/* line 45, ../sass/style.scss */
+.bs-callout-primary h4 {
+  color: #428bca;
+}
+
+/* line 48, ../sass/style.scss */
+.bs-callout-success {
+  border-left-color: #5cb85c;
+}
+
+/* line 51, ../sass/style.scss */
+.bs-callout-success h4 {
+  color: #5cb85c;
+}
+
+/* line 54, ../sass/style.scss */
+.bs-callout-danger {
+  border-left-color: #d9534f;
+}
+
+/* line 57, ../sass/style.scss */
+.bs-callout-danger h4 {
+  color: #d9534f;
+}
+
+/* line 60, ../sass/style.scss */
+.bs-callout-warning {
+  border-left-color: #f0ad4e;
+}
+
+/* line 63, ../sass/style.scss */
+.bs-callout-warning h4 {
+  color: #f0ad4e;
+}
+
+/* line 66, ../sass/style.scss */
+.bs-callout-info {
+  border-left-color: #5bc0de;
+}
+
+/* line 69, ../sass/style.scss */
+.bs-callout-info h4 {
+  color: #5bc0de;
+}
+
+/* line 74, ../sass/style.scss */
+#block-system-main h2.pane-title {
+  text-align: center;
+  font-size: 28px;
+  color: #428bca;
+}
