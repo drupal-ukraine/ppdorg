@@ -43,7 +43,6 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
  //   'Core commits' => PPGETSTAT_TYPE_CORE_COMMITS,
     'Github.com activity' => PPGETSTAT_TYPE_GITHUB_ACTIVITY,
   );
-  $pos = 1;
   $table_header = array(t('Position'), t('user'), t('companies worked for') , t('counter'), t('D.org link'));
   foreach ($types as $title => $data_type) {
     $query_results = db_query($query, array(
@@ -54,6 +53,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
 
     $user_nodes = _ppgetstat_get_users_by_doids($doids);
     $table_data = array();
+    $pos = 1;
     foreach ($query_results as $doid => $counter) {
       $user_node = $user_nodes[$doid];
       $company_column = '';
