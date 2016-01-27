@@ -22,7 +22,7 @@ dependencies[] = views
 dependencies[] = views_ui
 dependencies[] = double_field
 dependencies[] = uuid_features
-dependencies[] = adminiman_admin_menu
+dependencies[] = adminimal_admin_menu
 dependencies[] = jquery_update
 
 ; Custom modules
