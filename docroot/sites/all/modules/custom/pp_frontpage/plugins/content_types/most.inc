@@ -29,7 +29,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
     return $block;
   }
 
-  $output = t('Statistics for last three months');
+  $output = '<div class="bs-callout bs-callout-info">' . t('Statistics for the last 12 years') . '</div>';
 
   $query = 'SELECT doid, SUM(items) as counter  FROM {ppgetstat} '
     . 'WHERE type = :type AND timestamp > :timestamp '
@@ -43,7 +43,8 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
  //   'Core commits' => PPGETSTAT_TYPE_CORE_COMMITS,
     'Github.com activity' => PPGETSTAT_TYPE_GITHUB_ACTIVITY,
   );
-  $table_header = array(t('user'), t('company') , t('counter'), t('D.org link'));
+  $pos = 1;
+  $table_header = array(t('Position'), t('user'), t('companies worked for') , t('counter'), t('D.org link'));
   foreach ($types as $title => $data_type) {
     $query_results = db_query($query, array(
       ':type' => $data_type,
@@ -65,15 +66,18 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
         $company_column = implode(',', $company_titles);
       }
       $table_data[] = array(
+        $pos,
         _ppgetstat_get_node_link_by_doid($doid),
         $company_column ,
         $counter,
         l('http://drupal.org/user/' . $doid ,'http://drupal.org/user/' . $doid, array('external' => true))
-        );
+      );
+      $pos++;
     }
-
-    $output .= '<h3>' . t($title) . '</h3>';
-    $output .= theme('table', array('header' => $table_header, 'rows' => $table_data));
+    $output .= '<div class="panel panel-primary">';
+    $output .= '<div class="panel-heading">' . t($title) . '</div>';
+    $output .= '<div class="panel-body">' . theme('table', array('header' => $table_header, 'rows' => $table_data)) . '</div>';
+    $output .= '</div>';
   }
 
   cache_set(__FUNCTION__, $output, 'cache', CACHE_TEMPORARY);
