@@ -723,9 +723,9 @@ function _ppgetstat_process_dorg_users(array $users_data) {
         if (200 == $collection_request->code) {
           $collection_data = json_decode($collection_request->data);
           // Processing user companies.
-          $node->field_organisations['und'][] = _ppgetstat_vocab_term_tid($collection_data->field_organization_name, 'company');
+          $node->field_organisations[LANGUAGE_NONE][] = _ppgetstat_vocab_term_tid($collection_data->field_organization_name, 'company');
           // Processing user job titles.
-          $node->field_job_titles['und'][] = _ppgetstat_vocab_term_tid($collection_data->field_job_title, 'job_title');
+          $node->field_job_titles[LANGUAGE_NONE][] = _ppgetstat_vocab_term_tid($collection_data->field_job_title, 'job_title');
         }
       }
     }
@@ -739,25 +739,28 @@ function _ppgetstat_process_dorg_users(array $users_data) {
  */
 function _ppgetstat_vocab_term_tid($name, $vocab_name) {
   $vocab = taxonomy_vocabulary_machine_name_load($vocab_name);
+  $name = trim(strtolower($name));
   $tid = db_select('taxonomy_term_data', 't')
     ->fields('t', array('tid'))
-    ->condition('t.vid', $vocab->vid)
-    ->condition('t.name', trim(strtolower($name)))
+    ->condition('vid', $vocab->vid)
+    ->condition('name', $name)
     ->execute()
     ->fetchField();
 
-  if (!empty($tid)) {
-    return array(
-      'tid' => $tid,
-    );
-  } else {
-
-    return array(
+  if (empty($tid)) {
+    $term = (object) array(
       'vid' => $vocab->vid,
-      'tid' => 'autocreate',
-      'name' => trim(strtolower($name)),
+      'name' => $name,
+      'vocabulary_machine_name' => $vocab_name,
     );
+
+    // If term will not be saved directly then we'll get duplicates.
+    taxonomy_term_save($term);
+
+    return array('tid' => $term->tid);
   }
+
+  return array('tid' => $tid);
 }
 
 /**
