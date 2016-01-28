@@ -96,6 +96,7 @@ function ppgetstat_is_user_stored($argument) {
   // AND (field.field_user_id_value = '2802285' OR node.title = 'BR0kEN')
   // @endcode
   return (int) $query->condition('node.type', PPGETSTAT_USER_NODE_TYPE)
+    ->condition('node.status', NODE_PUBLISHED)
     ->condition($or)
     ->execute()
     ->fetchField();
