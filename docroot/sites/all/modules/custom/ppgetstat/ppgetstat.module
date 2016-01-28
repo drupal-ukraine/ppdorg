@@ -104,14 +104,10 @@ function ppgetstat_is_user_stored($argument) {
 }
 
 /**
- * @example
- * list($uid, $data) = ppgetstat_get_user('BR0kEN');
- * list($uid, $data) = ppgetstat_get_user(2802285);
- *
  * @param string|int $argument
  *   Nickname or an ID of a Drupal.org user.
  *
- * @return array
+ * @return stdClass|bool
  *   Compliance of the user ID to his personal data.
  */
 function ppgetstat_get_dorg_user($argument) {
@@ -123,10 +119,10 @@ function ppgetstat_get_dorg_user($argument) {
     // Work with zero element because we're check a single user.
     $data = reset($request->list);
 
-    return array($data->uid => $data);
+    return $data;
   }
 
-  return array();
+  return FALSE;
 }
 
 /**
@@ -655,26 +651,18 @@ function _ppgetstat_api_call($endpoint, array $vars, $page = 0) {
 function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
   for ($i = 0; $i < 10; $i++) {
     $r = _ppgetstat_api_call('api-d7/user.json', $variables, $page);
+
     if (!empty($r)) {
+      // Process list and add/update user nodes.
+      _ppgetstat_process_dorg_users($r->list);
       break;
     }
-    // Wait for next 10 seconds to retry.
-    sleep(10);
-  }
-
-  if (!empty($r)) {
-    $list = $r->list;
-    $users_data = array();
-
-    foreach ($list as $item) {
-      $users_data[$item->uid] = $item;
+    else {
+      watchdog('ppdorg_debug', t('An error returned during request.'));
     }
 
-    // Process list and add/update user nodes.
-    _ppgetstat_process_dorg_users($users_data);
-  }
-  else {
-    watchdog('ppdorg_debug', 'Request returned error');
+    // Wait for next 10 seconds to retry.
+    sleep(10);
   }
 
   $context['finished'] = 1;
@@ -684,13 +672,19 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
  * Helper function that process d.org users list and add/update that object to
  * user nodes.
  *
- * @param array $users_data
+ * @param stdClass[] $users_data
  *
  * @throws \Exception
  */
 function _ppgetstat_process_dorg_users(array $users_data) {
-  // An array of user IDs on a Drupal.org.
-  $doids = array_keys($users_data);
+  // Restructure an array with users data.
+  foreach ($users_data as $i => $data) {
+    unset($users_data[$i]);
+
+    if (isset($data->uid)) {
+      $users_data[$data->uid] = $data;
+    }
+  }
 
   // @code
   // array(
@@ -699,7 +693,7 @@ function _ppgetstat_process_dorg_users(array $users_data) {
   // @endcode
   $existed_users = db_select('field_data_field_user_id', 'u')
     ->fields('u', array('field_user_id_value', 'entity_id'))
-    ->condition('field_user_id_value', $doids)
+    ->condition('field_user_id_value', array_keys($users_data))
     ->execute()
     ->fetchAll(PDO::FETCH_KEY_PAIR|PDO::FETCH_GROUP);
 
@@ -710,7 +704,7 @@ function _ppgetstat_process_dorg_users(array $users_data) {
     }
     else {
       $node = new stdClass();
-      $node->type = 'user';
+      $node->type = PPGETSTAT_USER_NODE_TYPE;
 
       node_object_prepare($node);
     }
