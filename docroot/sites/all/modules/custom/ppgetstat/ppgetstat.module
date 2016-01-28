@@ -18,7 +18,8 @@ define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 define('PPGETSTAT_TYPE_COMMITS', 1);
 // Page cache expiry time.
 define('PPGETSTAT_PAGE_CACHE_EXPIRY', 6 * 60 * 60);
-define('PPGETSTAT_API_URL', 'https://www.drupal.org');
+// Default URL for API calls.
+define('PPGETSTAT_DEFAULT_API_URL', 'https://www.drupal.org');
 
 /**
  * Implements hook_menu().
@@ -633,7 +634,7 @@ function ppgetstat_node_insert($node) {
  * @return \stdClass|bool
  */
 function _ppgetstat_api_call($endpoint, array $vars, $page = 0) {
-  $url = rtrim(PPGETSTAT_API_URL, '/') . '/' . ltrim($endpoint, '/');
+  $url = rtrim(PPGETSTAT_DEFAULT_API_URL, '/') . '/' . ltrim($endpoint, '/');
 
   if (!empty($page)) {
     $vars['page'] = $page;
