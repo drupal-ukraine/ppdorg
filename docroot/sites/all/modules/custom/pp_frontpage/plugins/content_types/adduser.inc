@@ -20,12 +20,12 @@ $plugin = array(
  */
 function pp_frontpage_adduser_content_type_render($subtype, $conf, $panel_args, $context) {
   $block = new stdClass();
-  $block->module = 'pp_frontpage';
+
   $block->title = t('Add users');
+  $block->module = 'pp_frontpage';
 
   $form = menu_execute_active_handler('admin/config/services/sync_user_list', FALSE);
-  $output = '<div class="add-user-form">' . drupal_render($form) . '</div>';
+  $block->content = '<div class="add-user-form">' . drupal_render($form) . '</div>';
 
-  $block->content = $output;
   return $block;
 }
