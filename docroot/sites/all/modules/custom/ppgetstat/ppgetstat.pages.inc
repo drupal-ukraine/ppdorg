@@ -225,17 +225,17 @@ function ppgetstat_sync_user_list(array $form, array &$form_state) {
  */
 function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
   if (!empty($form_state['values']['direct_user'])) {
-    $users_data = ppgetstat_get_dorg_user($form_state['values']['direct_user']);
+    $user_data = ppgetstat_get_dorg_user($form_state['values']['direct_user']);
 
-    if (empty($users_data)) {
+    if (FALSE === $user_data) {
       drupal_set_message(t('User cannot be found by "@argument" as an ID or name.', array(
         '@argument' => $form_state['values']['direct_user'],
       )), 'warning');
     }
     else {
-      _ppgetstat_process_dorg_users($users_data);
+      _ppgetstat_process_dorg_users(array($user_data));
       drupal_set_message(t('User "@name" has been updated.', array(
-        '@name' => reset($users_data)->name,
+        '@name' => $user_data->name,
       )));
     }
   }
