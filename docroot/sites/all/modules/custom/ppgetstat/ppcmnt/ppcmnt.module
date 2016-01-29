@@ -45,21 +45,22 @@ function ppcmnt_ppgetstat_stats_job($user_node) {
  * Build urls for scanning core commits.
  */
 function _ppcmnt_get_comments_tracking_urls($data) {
-  $last_scan = $data['last_scan'];
   $cmt_zero_page = _ppgetstat_fetch_page('https://www.drupal.org/api-d7/comment.json?author=' . urlencode($data['doid']));
   $user_data = json_decode($cmt_zero_page);
   $count = parse_url($user_data->last);
+  $urls = array();
+
   parse_str($count['query'], $query);
+
   if (empty($user_data->list)) {
-    return NULL;
+    return $urls;
   }
   if ($query['page'] == 0) {
     return array($user_data->self);
   }
   // In worst scenario we expect one page of posts per four hours.
   // See webchick as example https://www.drupal.org/user/24967/track
-  $days_number = round((REQUEST_TIME - $last_scan) / (4 * 60 * 60));
-  $urls = array();
+  // $days_number = round((REQUEST_TIME - $last_scan) / (4 * 60 * 60));
   for ($i = 0; $i <= (int)$query['page']; $i++) {
     $urls[] = "https://www.drupal.org/api-d7/comment.json?name=" . urlencode($data['doid']) . "&page=" . $i;
   }

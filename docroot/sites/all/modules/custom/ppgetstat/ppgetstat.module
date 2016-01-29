@@ -18,6 +18,8 @@ define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 define('PPGETSTAT_TYPE_COMMITS', 1);
 // Page cache expiry time.
 define('PPGETSTAT_PAGE_CACHE_EXPIRY', 6 * 60 * 60);
+// Default URL for API calls.
+define('PPGETSTAT_DEFAULT_API_URL', 'https://www.drupal.org');
 
 /**
  * Implements hook_menu().
@@ -68,51 +70,59 @@ function ppgetstat_menu() {
 }
 
 /**
- * Get drupal.org user ID using nickname and http://dgo.to.
+ * Check that user is already imported from D.org to database.
  *
- * @param string $nick
- *   Nickname.
+ * @param string|int $argument
+ *   Nickname or an ID of a Drupal.org user.
  *
  * @return int
- *   Drupal.org user id.
+ *   Node ID of a user.
  */
-function ppgetstat_get_id_by_nick($nick) {
-  if ($id_cached = cache_get('ppgetstat_nick_' . $nick)) {
-    return $id_cached->data;
-  }
-  $nick_data = drupal_http_request('http://dgo.to/@' . $nick);
-  $request = parse_url($nick_data->redirect_url);
-  $id_data = explode("/", $request['path']);
-  $id = $id_data[2];
+function ppgetstat_is_user_stored($argument) {
+  $query = db_select('node', 'node')
+    ->fields('node', array('nid'));
 
-  if (!is_numeric($id)) {
-    return FALSE;
-  }
+  $query->leftJoin('field_data_field_user_id', 'field', 'node.nid = field.entity_id');
 
-  cache_set('ppgetstat_nick_' . $nick, $id);
+  $or = db_or();
+  $or->condition('field.field_user_id_value', $argument);
+  $or->condition('node.title', $argument);
 
-  return $id;
+  // @code
+  // SELECT nid
+  // FROM node node
+  // LEFT JOIN field_data_field_user_id field
+  // ON node.nid = field.entity_id
+  // WHERE node.type = 'user'
+  // AND (field.field_user_id_value = '2802285' OR node.title = 'BR0kEN')
+  // @endcode
+  return (int) $query->condition('node.type', PPGETSTAT_USER_NODE_TYPE)
+    ->condition('node.status', NODE_PUBLISHED)
+    ->condition($or)
+    ->execute()
+    ->fetchField();
 }
 
 /**
- * Get drupal.org user Nickname using uid and https://www.drupal.org/user/.
+ * @param string|int $argument
+ *   Nickname or an ID of a Drupal.org user.
  *
- * @param string|int $id
- *   User drupal.org Id.
- *
- * @return bool|string
- *   User drupal.org nickname or FALSE if not user was found.
+ * @return stdClass|bool
+ *   Compliance of the user ID to his personal data.
  */
-function ppgetstat_get_nick_by_id($id) {
-  $userdata = drupal_http_request('https://www.drupal.org/user/' . $id);
+function ppgetstat_get_dorg_user($argument) {
+  $request = _ppgetstat_api_call('api-d7/user.json', array(
+    is_numeric($argument) ? 'uid' : 'name' => $argument,
+  ));
 
-  if ($userdata->code > 400) {
-    return FALSE;
+  if (!empty($request->list)) {
+    // Work with zero element because we're check a single user.
+    $data = reset($request->list);
+
+    return $data;
   }
 
-  preg_match('/\<h1 id\=\"page-title\" class\=\"title\"\>(.+)\<\/h1\>/', $userdata->data, $match);
-
-  return (!empty($match[1]) ? $match[1] : FALSE);
+  return FALSE;
 }
 
 /**
@@ -612,38 +622,27 @@ function ppgetstat_node_insert($node) {
 
 /**
  * JSON call
- * @param $site
- * @param $endpoint
- * @param $vars
+ *
+ * @param string $endpoint
+ * @param array $vars
  * @param int $page
- * @return mixed
+ *
+ * @return \stdClass|bool
  */
-function _ppgetstat_api_call($site, $endpoint, $vars, $page = 0) {
+function _ppgetstat_api_call($endpoint, array $vars, $page = 0) {
+  $url = rtrim(PPGETSTAT_DEFAULT_API_URL, '/') . '/' . ltrim($endpoint, '/');
 
-  $url = $site . $endpoint;
-  if (!empty($vars)) {
-    $url .= '?';
-    $variables = array();
-    foreach ($vars as $key => $value) {
-      if (is_array($value)) {
-        $value = implode('%2C', $value);
-      }
-      $variables[] = $key . '=' . $value;
-    }
-    $url .= implode('&', $variables);
-  }
   if (!empty($page)) {
-    $url .= '&page=' . $page;
+    $vars['page'] = $page;
+  }
+
+  if (!empty($vars)) {
+    $url .= '?' . http_build_query($vars);
   }
 
   $request = drupal_http_request($url, array('timeout' => 3000));
-  if ($request->code == 200) {
-    $JSON = $request->data;
-  } else {
-    $JSON = NULL;
-  }
 
-  return json_decode($JSON);
+  return json_decode(200 == $request->code ? $request->data : NULL);
 }
 
 /**
@@ -651,33 +650,19 @@ function _ppgetstat_api_call($site, $endpoint, $vars, $page = 0) {
  */
 function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
   for ($i = 0; $i < 10; $i++) {
-    $r = _ppgetstat_api_call(
-      'https://www.drupal.org/',
-      'api-d7/user.json',
-      $variables,
-      $page
-    );
+    $r = _ppgetstat_api_call('api-d7/user.json', $variables, $page);
+
     if (!empty($r)) {
+      // Process list and add/update user nodes.
+      _ppgetstat_process_dorg_users($r->list);
       break;
     }
-    // wait for next 10 seconds to retry.
-    sleep(10);
-  }
-
-  if (!empty($r)) {
-    $list = $r->list;
-    $users_data = $uids = array();
-
-    foreach ($list as $item) {
-      $uids[] = $item->uid;
-      $users_data[$item->uid] = $item;
+    else {
+      watchdog('ppdorg_debug', t('An error returned during request.'));
     }
 
-    // Process list and add/update user nodes.
-    _ppgetstat_process_dorg_users($users_data, $uids);
-
-  } else {
-    watchdog('ppdorg_debug', 'Request returned error');
+    // Wait for next 10 seconds to retry.
+    sleep(10);
   }
 
   $context['finished'] = 1;
@@ -686,57 +671,61 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
 /**
  * Helper function that process d.org users list and add/update that object to
  * user nodes.
- * @param $users_data
- * @param $doids
+ *
+ * @param stdClass[] $users_data
+ *
  * @throws \Exception
  */
-function _ppgetstat_process_dorg_users($users_data, $doids) {
+function _ppgetstat_process_dorg_users(array $users_data) {
+  // Restructure an array with users data.
+  foreach ($users_data as $i => $data) {
+    unset($users_data[$i]);
 
-  $existed_users_query = db_select('field_data_field_user_id', 'u')
-    ->fields('u', array('entity_id','field_user_id_value'))
-    ->condition('u.field_user_id_value', $doids, 'IN')
-    ->execute()
-    ->fetchAll();
-  $existed_users = array();
-  foreach ($existed_users_query as $item) {
-    $existed_users[$item->field_user_id_value] = $item->entity_id;
+    if (isset($data->uid)) {
+      $users_data[$data->uid] = $data;
+    }
   }
 
-  foreach ($doids as $uid) {
+  // @code
+  // array(
+  //   '<DORG_UID>' => '<NID>',
+  // );
+  // @endcode
+  $existed_users = db_select('field_data_field_user_id', 'u')
+    ->fields('u', array('field_user_id_value', 'entity_id'))
+    ->condition('field_user_id_value', array_keys($users_data))
+    ->execute()
+    ->fetchAll(PDO::FETCH_KEY_PAIR|PDO::FETCH_GROUP);
+
+  foreach ($users_data as $uid => $data) {
     // If user is not tracked yet - creating new empty node.
-    if (!in_array($uid, $existed_users)) {
-      $node = new stdClass();
-      $node->type = 'user';
-      node_object_prepare($node);
-    } else {
+    if (isset($existed_users[$uid])) {
       $node = node_load($existed_users[$uid]);
     }
+    else {
+      $node = new stdClass();
+      $node->type = PPGETSTAT_USER_NODE_TYPE;
 
-    $user_organizations = $users_data[$uid]->field_organizations;
-    if (!empty($user_organizations)) {
-      $org_name = array();
-      $org_title = array();
-      foreach ($user_organizations as $org)  {
-        $collection_request = drupal_http_request($org->uri. '.json');
-        if ($collection_request->code == 200) {
+      node_object_prepare($node);
+    }
+
+    $node->title = $data->name;
+    $node->field_user_id[LANGUAGE_NONE] = array(array('value' => $uid));
+
+    if (!empty($data->field_organizations)) {
+      foreach ($data->field_organizations as $organization)  {
+        $collection_request = drupal_http_request($organization->uri. '.json');
+
+        if (200 == $collection_request->code) {
           $collection_data = json_decode($collection_request->data);
-          $org_name[] = $collection_data->field_organization_name;
-          $org_title[] = $collection_data->field_job_title;
+          // Processing user companies.
+          $node->field_organisations[LANGUAGE_NONE][] = _ppgetstat_vocab_term_tid($collection_data->field_organization_name, 'company');
+          // Processing user job titles.
+          $node->field_job_titles[LANGUAGE_NONE][] = _ppgetstat_vocab_term_tid($collection_data->field_job_title, 'job_title');
         }
       }
-      // Processing user companies.
-      foreach ($org_name as $on) {
-        $node->field_organisations['und'][] = _ppgetstat_vocab_term_tid($on, 'company');
-      }
-      // Processing user job titles.
-      foreach ($org_title as $ot) {
-        $node->field_job_titles['und'][] = _ppgetstat_vocab_term_tid($ot, 'job_title');
-      }
     }
-    $node->field_user_id['und'][] = array(
-      'value' => $uid,
-    );
-    $node->title = $users_data[$uid]->name;
+
     node_save($node);
   }
 }
@@ -746,25 +735,28 @@ function _ppgetstat_process_dorg_users($users_data, $doids) {
  */
 function _ppgetstat_vocab_term_tid($name, $vocab_name) {
   $vocab = taxonomy_vocabulary_machine_name_load($vocab_name);
+  $name = trim(strtolower($name));
   $tid = db_select('taxonomy_term_data', 't')
     ->fields('t', array('tid'))
-    ->condition('t.vid', $vocab->vid)
-    ->condition('t.name', trim(strtolower($name)))
+    ->condition('vid', $vocab->vid)
+    ->condition('name', $name)
     ->execute()
     ->fetchField();
 
-  if (!empty($tid)) {
-    return array(
-      'tid' => $tid,
-    );
-  } else {
-
-    return array(
+  if (empty($tid)) {
+    $term = (object) array(
       'vid' => $vocab->vid,
-      'tid' => 'autocreate',
-      'name' => trim(strtolower($name)),
+      'name' => $name,
+      'vocabulary_machine_name' => $vocab_name,
     );
+
+    // If term will not be saved directly then we'll get duplicates.
+    taxonomy_term_save($term);
+
+    return array('tid' => $term->tid);
   }
+
+  return array('tid' => $tid);
 }
 
 /**

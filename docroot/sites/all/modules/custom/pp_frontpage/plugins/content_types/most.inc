@@ -22,6 +22,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
   $block = new stdClass();
   $block->module = 'pp_frontpage';
   $block->title = t('Most active users');
+  $output = '';
 
   $cache = cache_get(__FUNCTION__);
   if (!empty($cache)) {
@@ -30,7 +31,6 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
   }
 
   $output = '<div class="bs-callout bs-callout-info">' . t('Statistics for the last 12 years') . '</div>';
-
   $query = 'SELECT doid, SUM(items) as counter  FROM {ppgetstat} '
     . 'WHERE type = :type AND timestamp > :timestamp '
     . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,100';
