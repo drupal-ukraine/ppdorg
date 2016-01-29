@@ -41,3 +41,23 @@ function ppdorg_install() {
   user_role_grant_permissions(DRUPAL_AUTHENTICATED_RID, array('access content'));
 }
 
+/**
+ *  Enable adminimal theme and set it as default admin theme.
+ *  Enable bootstrap, ppdorg_bootstrap and set them as default_theme.
+ */
+function ppdorg_update_7001() {
+
+  module_enable(array('jquery_update', 'adminimal_admin_menu'));
+  theme_enable(array('adminimal_theme', 'bootstrap', 'ppdorg_bootstrap'));
+
+  $theme_config = array(
+    'theme_default' => 'ppdorg_bootstrap',
+    'admin_theme' => 'adminimal_theme',
+  );
+
+  foreach ($theme_config as $var => $theme) {
+    if (!is_numeric($var)) {
+        variable_set($var, $theme);
+    }
+  }
+}
