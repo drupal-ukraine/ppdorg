@@ -142,10 +142,77 @@ function ppgetstat_cron() {
   // Remove expired cached pages.
   _ppgetstat_cron_remove_cached_pages();
 
+  //Start users sync process with d.org
+  _ppgetstat_cron_create_users_queue();
+
+  //Process step of sync process.
+  _ppgetstat_cron_process_users_queue();
+
   $time_post = microtime(TRUE);
   $exec_time = round($time_post - $time_pre, 2);
   watchdog('ppgetstat_cron', $exec_time . 's ');
 
+}
+
+/**
+ * If period has passed, start rescan of available users list.
+ */
+function _ppgetstat_cron_create_users_queue() {
+  $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp');
+  // we are running users lists rescan each 2 days.
+  if ($last_cron_run > REQUEST_TIME - 48 * 60 * 60) {
+    return;
+  }
+  $queue = DrupalQueue::get('ppgetstat_users_scan');
+  $queue->createQueue();
+  $vocab = taxonomy_vocabulary_machine_name_load('users_list');
+  $terms = taxonomy_get_tree($vocab->vid);
+  foreach ($terms as $term) {
+    $term = taxonomy_term_load($term->tid);
+    $field_query = field_get_items('taxonomy_term', $term, 'field_query');
+    if (!empty($field_query)) {
+      $variables = array();
+      foreach ($field_query as $item) {
+        $variables[$item['first']] = $item['second'];
+      }
+      $r = _ppgetstat_api_call('api-d7/user.json', $variables);
+      $last_url = parse_url($r->last);
+      parse_str($last_url['query'], $params);
+      for ($i = $params['page'] - 1; $i >= 0; $i--) {
+        $queue->createItem(array(
+          $variables, $i
+        ));
+      }
+    }
+  }
+  variable_set('ppgetstat_last_users_rescan_timestamp', REQUEST_TIME);
+}
+
+/**
+ * Process users queue
+ */
+function _ppgetstat_cron_process_users_queue() {
+  $last_cron_run = variable_get('ppgetstat_last_users_process_timestamp');
+  // we are running users lists rescan each 5 minutes.
+  if ($last_cron_run > REQUEST_TIME - 5 * 60) {
+    return;
+  }
+
+  $queue = DrupalQueue::get('ppgetstat_users_scan');
+  if ($queue->NumberOfItems() > 0) {
+    $item = $queue->claimItem();
+    if (!empty($item)) {
+      $variables = $item->data[0];
+      $page = $item->data[1];
+      _ppgetstat_sync_user_list_step($variables, $page);
+      watchdog('tolik_debug', 'Users queue item:' . print_r($item,1));
+      $queue->deleteItem($item);
+    }
+  } else {
+    $queue->DeleteQueue();
+  }
+
+  variable_set('ppgetstat_last_users_process_timestamp', REQUEST_TIME);
 }
 
 /**
@@ -648,7 +715,7 @@ function _ppgetstat_api_call($endpoint, array $vars, $page = 0) {
 /**
  * Batch step function for syncing user list.
  */
-function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
+function _ppgetstat_sync_user_list_step($variables, $page) {
   for ($i = 0; $i < 10; $i++) {
     $r = _ppgetstat_api_call('api-d7/user.json', $variables, $page);
 
@@ -664,8 +731,6 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
     // Wait for next 10 seconds to retry.
     sleep(10);
   }
-
-  $context['finished'] = 1;
 }
 
 /**
@@ -711,6 +776,7 @@ function _ppgetstat_process_dorg_users(array $users_data) {
 
     $node->title = $data->name;
     $node->field_user_id[LANGUAGE_NONE] = array(array('value' => $uid));
+    $node->field_registered_at[LANGUAGE_NONE] = array(array('value' => $data->created));
 
     if (!empty($data->field_organizations)) {
       foreach ($data->field_organizations as $organization)  {
@@ -728,6 +794,7 @@ function _ppgetstat_process_dorg_users(array $users_data) {
 
     node_save($node);
   }
+  return TRUE;
 }
 
 /**

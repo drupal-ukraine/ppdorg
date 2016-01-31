@@ -224,6 +224,7 @@ function ppgetstat_sync_user_list(array $form, array &$form_state) {
  * Submit callback for sync user list form
  */
 function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
+  _ppgetstat_cron_create_users_queue();
   if (!empty($form_state['values']['direct_user'])) {
     $user_data = ppgetstat_get_dorg_user($form_state['values']['direct_user']);
 
@@ -242,7 +243,7 @@ function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
   elseif (!empty($form_state['values']['users_list'])) {
     $term = taxonomy_term_load($form_state['values']['users_list']);
     $field_query = field_get_items('taxonomy_term', $term, 'field_query');
-    $variables = array('limit' => 7);
+    $variables = array('limit' => 50);
 
     if (FALSE !== $field_query) {
       foreach ($field_query as $item) {
@@ -261,12 +262,12 @@ function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
       }
 
       if (isset($operations)) {
-        batch_set(array(
+        /*batch_set(array(
           'title' => t('Processing import...'),
           'finished' => '_ppgetstat_batch_finished',
           'operations' => $operations,
           'init_message' => t('Batch is starting.'),
-        ));
+        ));*/
       }
       else {
         drupal_set_message(t('Nothing to process.'), 'warning');
