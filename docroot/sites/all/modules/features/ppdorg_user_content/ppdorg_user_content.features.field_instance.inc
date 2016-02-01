@@ -131,6 +131,46 @@ function ppdorg_user_content_field_default_field_instances() {
     ),
   );
 
+  // Exported field_instance: 'node-user-field_mentors'.
+  $field_instances['node-user-field_mentors'] = array(
+    'bundle' => 'user',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'text',
+        'settings' => array(),
+        'type' => 'text_default',
+        'weight' => 7,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_mentors',
+    'label' => 'mentors',
+    'required' => 0,
+    'settings' => array(
+      'text_processing' => 0,
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'text',
+      'settings' => array(
+        'size' => 60,
+      ),
+      'type' => 'text_textfield',
+      'weight' => 8,
+    ),
+  );
+
   // Exported field_instance: 'node-user-field_organisations'.
   $field_instances['node-user-field_organisations'] = array(
     'bundle' => 'user',
@@ -270,6 +310,7 @@ function ppdorg_user_content_field_default_field_instances() {
   t('Github username');
   t('User ID');
   t('job_titles');
+  t('mentors');
   t('organisations');
   t('registered_at');
 
