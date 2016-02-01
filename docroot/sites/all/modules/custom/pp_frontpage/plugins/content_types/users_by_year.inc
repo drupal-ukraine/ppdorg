@@ -38,8 +38,7 @@ function pp_frontpage_users_by_year_content_type_render($subtype, $conf, $panel_
     }
     $years_users[$year][] = $item->field_user_id_value;
   }
-
-  foreach ($years_users as $year =>$users) {
+  foreach ($years_users as $year => $users) {
     $active_by_commits_count = db_select('ppgetstat', 'pp')
       ->fields('pp', array('doid'))
       ->condition('pp.type', PPGETSTAT_TYPE_COMMITS)
@@ -57,9 +56,10 @@ function pp_frontpage_users_by_year_content_type_render($subtype, $conf, $panel_
       ->countQuery()
       ->execute()
       ->fetchField();
-
-    $active_commiters_by_year[$year] = $active_by_commits_count;
-    $active_commenters_by_year[$year] = $active_by_comments_count;
+    $commit_p = ($active_by_commits_count/count($years_users[$year]))*100;
+    $active_commiters_by_year[$year] = $active_by_commits_count . ' <span class="sm">'. $commit_p . ' %</span>';
+    $comment_p = ($active_by_comments_count/count($years_users[$year]))*100;
+    $active_commenters_by_year[$year] = $active_by_comments_count. ' <span class="sm">'. number_format($comment_p,2) . ' %</span>';
   }
 
   ksort($years_stat);
