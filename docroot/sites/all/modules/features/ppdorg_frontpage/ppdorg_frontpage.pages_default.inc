@@ -139,6 +139,25 @@ function ppdorg_frontpage_default_page_manager_pages() {
     $display->content['new-3602e802-6146-43f4-9503-4c60d30b1f20'] = $pane;
     $display->panels['top'][0] = 'new-3602e802-6146-43f4-9503-4c60d30b1f20';
     $pane = new stdClass();
+    $pane->pid = 'new-95f8316a-7703-4332-bdfa-60437d7deeaa';
+    $pane->panel = 'top';
+    $pane->type = 'users_by_year';
+    $pane->subtype = 'users_by_year';
+    $pane->shown = TRUE;
+    $pane->access = array();
+    $pane->configuration = array();
+    $pane->cache = array();
+    $pane->style = array(
+      'settings' => NULL,
+    );
+    $pane->css = array();
+    $pane->extras = array();
+    $pane->position = 1;
+    $pane->locks = array();
+    $pane->uuid = '95f8316a-7703-4332-bdfa-60437d7deeaa';
+    $display->content['new-95f8316a-7703-4332-bdfa-60437d7deeaa'] = $pane;
+    $display->panels['top'][1] = 'new-95f8316a-7703-4332-bdfa-60437d7deeaa';
+    $pane = new stdClass();
     $pane->pid = 'new-7129b02f-9bfd-4804-b6b1-306c0b8666d9';
     $pane->panel = 'top';
     $pane->type = 'most';
@@ -152,11 +171,11 @@ function ppdorg_frontpage_default_page_manager_pages() {
     );
     $pane->css = array();
     $pane->extras = array();
-    $pane->position = 1;
+    $pane->position = 2;
     $pane->locks = array();
     $pane->uuid = '7129b02f-9bfd-4804-b6b1-306c0b8666d9';
     $display->content['new-7129b02f-9bfd-4804-b6b1-306c0b8666d9'] = $pane;
-    $display->panels['top'][1] = 'new-7129b02f-9bfd-4804-b6b1-306c0b8666d9';
+    $display->panels['top'][2] = 'new-7129b02f-9bfd-4804-b6b1-306c0b8666d9';
   $display->hide_title = PANELS_TITLE_FIXED;
   $display->title_pane = 'new-d26d5ad6-b7a3-426a-a089-c623468e44c0';
   $handler->conf['display'] = $display;
