@@ -783,6 +783,15 @@ function _ppgetstat_process_dorg_users($users_data, $doids) {
       'value' => $uid,
     );
 
+    $user_mentors = $users_data[$uid]->field_mentors;
+    if (!empty($user_mentors)) {
+      foreach ($user_mentors as $mentor) {
+        $node->field_mentors[LANGUAGE_NONE][] = array(
+          'value' => $mentor->id,
+        );
+      }
+    }
+
     $user_organizations = $users_data[$uid]->field_organizations;
     if (!empty($user_organizations)) {
       $org_name = array();
