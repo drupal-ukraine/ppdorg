@@ -4,14 +4,13 @@
  * @file
  * Drupal.org statistics routines.
  */
-
 define('PPGETSTAT_USER_NODE_TYPE', 'user');
 // Number of users queued to be scanned per cron run.
 define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 100);
 // Number of calls to drupal.org per cron run.
 define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 800);
 // If no stats available we scan commits for last half a year.
-define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 6 * 30 * 24 * 60 * 60));
+define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 12 * 12 * 30 * 24 * 60 * 60));
 // We group statistics per week.
 define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 // Commmits type of data.
@@ -150,7 +149,7 @@ function ppgetstat_cron() {
 function _ppgetstat_cron_create_users_queue() {
   $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp');
   // we are running users lists rescan each 2 days.
-  if ($last_cron_run > REQUEST_TIME - 48 * 60 * 60) {
+  if ($last_cron_run > REQUEST_TIME - 24 * 60 * 60) {
     return;
   }
   $queue = DrupalQueue::get('ppgetstat_users_scan');
@@ -165,7 +164,7 @@ function _ppgetstat_cron_create_users_queue() {
       foreach ($field_query as $item) {
         $variables[$item['first']] = $item['second'];
       }
-      $r = _ppgetstat_api_call('api-d7/user.json', $variables);
+      $r = _ppgetstat_api_call('https://www.drupal.org/','api-d7/user.json', $variables);
       $last_url = parse_url($r->last);
       parse_str($last_url['query'], $params);
       for ($i = $params['page'] - 1; $i >= 0; $i--) {
