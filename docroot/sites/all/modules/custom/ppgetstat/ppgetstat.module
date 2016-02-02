@@ -149,7 +149,7 @@ function ppgetstat_cron() {
 function _ppgetstat_cron_create_users_queue() {
   $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp');
   // we are running users lists rescan each 2 days.
-  if ($last_cron_run > REQUEST_TIME - 24 * 60 * 60) {
+  if ($last_cron_run > REQUEST_TIME - 6 * 60 * 60) {
     return;
   }
   $queue = DrupalQueue::get('ppgetstat_users_scan');
@@ -194,7 +194,6 @@ function _ppgetstat_cron_process_users_queue() {
       $variables = $item->data[0];
       $page = $item->data[1];
       _ppgetstat_sync_user_list_step($variables, $page);
-      watchdog('tolik_debug', 'Users queue item:' . print_r($item,1));
       $queue->deleteItem($item);
     }
   } else {
@@ -769,7 +768,7 @@ function _ppgetstat_process_dorg_users($users_data, $doids) {
 
   foreach ($doids as $uid) {
     // If user is not tracked yet - creating new empty node.
-    if (!in_array($uid, $existed_users)) {
+    if (!array_key_exists($uid, $existed_users)) {
       $node = new stdClass();
       $node->type = 'user';
       node_object_prepare($node);
