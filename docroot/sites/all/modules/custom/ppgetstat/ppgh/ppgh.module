@@ -41,7 +41,7 @@ function ppgh_ppgetstat_stats_job($user_node) {
  * Build url for scanning github activity.
  */
 function _ppgh_get_github_activity_tracking_url($data) {
-  $url[] = 'https://github.com/users/' . $data['github_username'] . '/contributions';
+  $url[] = 'https://github.com/users/' . $data['github_username'] . '/contributions_calendar_data';
   return $url;
 }
 
