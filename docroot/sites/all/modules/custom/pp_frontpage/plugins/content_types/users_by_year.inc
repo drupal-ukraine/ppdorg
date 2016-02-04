@@ -7,7 +7,7 @@ $plugin = array(
 );
 
 /**
- * Render community list statistic
+ * Render users by year statistics.
  */
 function pp_frontpage_users_by_year_content_type_render($subtype, $conf, $panel_args, $context) {
 

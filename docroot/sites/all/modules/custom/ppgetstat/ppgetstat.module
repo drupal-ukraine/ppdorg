@@ -804,12 +804,14 @@ function _ppgetstat_process_dorg_users($users_data, $doids) {
         }
       }
       // Processing user companies.
+      $node->field_organisations[LANGUAGE_NONE] = array();
       foreach ($org_name as $on) {
-        $node->field_organisations['und'][] = _ppgetstat_vocab_term_tid($on, 'company');
+        $node->field_organisations[LANGUAGE_NONE][] = _ppgetstat_vocab_term_tid($on, 'company');
       }
       // Processing user job titles.
+      $node->field_job_titles[LANGUAGE_NONE] = array();
       foreach ($org_title as $ot) {
-        $node->field_job_titles['und'][] = _ppgetstat_vocab_term_tid($ot, 'job_title');
+        $node->field_job_titles[LANGUAGE_NONE][] = _ppgetstat_vocab_term_tid($ot, 'job_title');
       }
     }
 
@@ -841,6 +843,31 @@ function _ppgetstat_vocab_term_tid($name, $vocab_name) {
       'name' => trim(strtolower($name)),
     );
   }
+}
+
+/**
+ * Helper function that get info about individual membership.
+ */
+function _ppgetstat_get_individual_members() {
+  $assoc_result = cache_get('pp_frontpage_assoc_members');
+  if (empty($assoc_result)) {
+    $r = _ppgetstat_api_call('https://assoc.drupal.org/', 'api/association_members.json', array());
+    $members_stat = array();
+    foreach ($r->users as $temp) {
+      $user = $temp->user;
+      $user->Country = trim($user->Country);
+      if (empty($user->Country) || ($user->Country == 1)) {
+        $user->Country = 'COUNTRY_NOT_DEFINED';
+      }
+      $members_stat['members_country_count'][$user->Country] += 1;
+      $members_stat['members_country'][$user->Country][] = $user->user_name;
+    }
+    array_multisort($members_stat['members_country_count'], SORT_DESC,  SORT_NUMERIC);
+    cache_set('pp_frontpage_assoc_members', $members_stat);
+  } else {
+    $members_stat = $assoc_result->data;
+  }
+  return $members_stat;
 }
 
 /**
