@@ -3,4 +3,5 @@ description = Get drupal.org statistic
 core = 7.x
 version = 1.0
 
+files[] = includes/ppgetstat.api.inc
 files[] = includes/ppgetstat.html.inc

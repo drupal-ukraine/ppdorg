@@ -24,6 +24,7 @@ dependencies[] = double_field
 dependencies[] = uuid_features
 dependencies[] = adminimal_admin_menu
 dependencies[] = jquery_update
+dependencies[] = date
 
 ; Custom modules
 dependencies[] = ppgetstat

@@ -61,8 +61,8 @@ function _ppcmnt_get_comments_tracking_urls($data) {
   // In worst scenario we expect one page of posts per four hours.
   // See webchick as example https://www.drupal.org/user/24967/track
   // $days_number = round((REQUEST_TIME - $last_scan) / (4 * 60 * 60));
-  for ($i = 0; $i <= (int)$query['page']; $i++) {
-    $urls[] = "https://www.drupal.org/api-d7/comment.json?name=" . urlencode($data['doid']) . "&page=" . $i;
+  for ($i = 0; $i <= (int) $query['page']; $i++) {
+    $urls[] = 'https://www.drupal.org/api-d7/comment.json?name=' . urlencode($data['doid']) . '&page=' . $i;
   }
 
   return $urls;
@@ -72,7 +72,6 @@ function _ppcmnt_get_comments_tracking_urls($data) {
  * Parse user's posts page and create job items to parse individual post pages.
  */
 function _ppcmnt_parse_posts_list($page_content, $data) {
-  $nickname = $data['do_nickname'];
   $last_scan = $data['last_scan'];
   if (empty($page_content)) {
     throw new Exception('Empty page content.');
