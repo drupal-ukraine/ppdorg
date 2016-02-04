@@ -16,7 +16,7 @@ function pp_frontpage_community_quality_content_type_render($subtype, $conf, $pa
   //@TODO add user list filtering for future.
   $all_user_count = db_select('node', 'n')
    ->fields('n', array('nid'))
-   ->condition('n.type', 'user')
+   ->condition('type', PPGETSTAT_USER_NODE_TYPE)
    ->countQuery()
    ->execute()
    ->fetchField();
@@ -37,13 +37,15 @@ function pp_frontpage_community_quality_content_type_render($subtype, $conf, $pa
     ->execute()
     ->fetchField();
 
-  $block->content = '<div class="bs-callout bs-callout-primary">
-   <ul>
-   <li>'.t('Total count').' : <strong>' . $all_user_count . '</strong></li>
-   <li>'.t('Active committers').' : <strong>' . $active_by_commits_count . ' (' . number_format($active_by_commits_count/$all_user_count, 2)*100 . ')%</strong></li>
-   <li>'.t('Active commenters').' : <strong>' . $active_by_comments_count . ' (' . number_format($active_by_comments_count/$all_user_count, 2)*100 . ')%</strong></li>
-   </ul>
-   </div>';
+  if ($all_user_count > 0) {
+    $block->content = '<div class="bs-callout bs-callout-primary">
+     <ul>
+     <li>'.t('Total count').' : <strong>' . $all_user_count . '</strong></li>
+     <li>'.t('Active committers').' : <strong>' . $active_by_commits_count . ' (' . number_format($active_by_commits_count/$all_user_count, 2)*100 . ')%</strong></li>
+     <li>'.t('Active commenters').' : <strong>' . $active_by_comments_count . ' (' . number_format($active_by_comments_count/$all_user_count, 2)*100 . ')%</strong></li>
+     </ul>
+     </div>';
+  }
 
   return $block;
 }
