@@ -10,11 +10,15 @@ define('PPGETSTAT_USER_NODE_TYPE', 'user');
 define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 100);
 // Number of calls to drupal.org per cron run.
 define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 800);
+// Hours, minutes, seconds.
+define('PPGETSTAT_TIME_DAY_GRANULARITY', 24 * 60 * 60);
+// Week timestamp.
+define('PPGETSTAT_TIME_WEEK_GRANULARITY', 7 * PPGETSTAT_TIME_DAY_GRANULARITY);
+// Month timestamp.
+define('PPGETSTAT_TIME_MONTH_GRANULARITY', 30 * PPGETSTAT_TIME_DAY_GRANULARITY);
 // If no stats available we scan commits for last half a year.
-define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 6 * 30 * 24 * 60 * 60));
-// We group statistics per week.
-define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
-// Commmits type of data.
+define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', ppgetstat_stats_period());
+// Commits type of data.
 define('PPGETSTAT_TYPE_COMMITS', 1);
 // Page cache expiry time.
 define('PPGETSTAT_PAGE_CACHE_EXPIRY', 6 * 60 * 60);
@@ -67,6 +71,32 @@ function ppgetstat_menu() {
   );
 
   return $items;
+}
+
+/**
+ * Get/set scanning period.
+ *
+ * @param int $months
+ *   Number of months.
+ *
+ * @return int
+ *   Timestamp.
+ */
+function ppgetstat_stats_period($months = NULL) {
+  if (isset($months)) {
+    $do = 'set';
+  }
+  else {
+    // If value doesn't specified then work as getter.
+    $do = 'get';
+    // Default number of months to scan.
+    $months = 6;
+  }
+
+  $value = $months * PPGETSTAT_TIME_MONTH_GRANULARITY;
+  $result = call_user_func("variable_$do", __FUNCTION__, $value);
+
+  return NULL === $result ? $value : $result;
 }
 
 /**
@@ -123,6 +153,34 @@ function ppgetstat_get_dorg_user($argument) {
   }
 
   return FALSE;
+}
+
+/**
+ * Parse GitHub username from Drupal.org.
+ *
+ * @param int $doid
+ *   Drupal.org used ID.
+ *
+ * @return string
+ *   GitHub user name.
+ */
+function ppgetstat_get_github_username_by_doid($doid) {
+  $page = drupal_http_request(PPGETSTAT_DEFAULT_API_URL . "/user/$doid");
+
+  if (!empty($page->data)) {
+    $data = new PPGetStatHTML($page->data);
+    $links = $data
+      ->xpath()
+      ->query("//div[contains(@class, 'field-social-links')]//a[contains(@href, 'github')]/@href");
+
+    if ($links->length > 0) {
+      $url = parse_url($links[$links->length - 1]->value);
+
+      return ltrim($url['path'], '/');
+    }
+  }
+
+  return '';
 }
 
 /**
@@ -488,7 +546,7 @@ function _ppgetstat_parse_commits($page_content, $data) {
       break;
     }
 
-    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_WEEK_GRANULARITY);
     $last_commits = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array($data['doid'] => array($period_timestamp => 0)));
 
     // Save latest commit's date per week into variable.
@@ -710,7 +768,13 @@ function _ppgetstat_process_dorg_users(array $users_data) {
     }
 
     $node->title = $data->name;
-    $node->field_user_id[LANGUAGE_NONE] = array(array('value' => $uid));
+
+    foreach (array(
+      'field_user_id' => $uid,
+      'field_github_username' => ppgetstat_get_github_username_by_doid($uid),
+    ) as $field_name => $value) {
+      $node->{$field_name}[LANGUAGE_NONE] = array(array('value' => $value));
+    }
 
     if (!empty($data->field_organizations)) {
       foreach ($data->field_organizations as $organization)  {
