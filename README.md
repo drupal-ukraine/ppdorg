@@ -229,6 +229,6 @@ and run the script
 sh reinstall.sh
 ```
 
-for drupal reinstall from scratch.
+for Drupal reinstall from scratch.
 
 Configure Stage File Proxy to use the files from the correct source.
