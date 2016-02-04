@@ -112,3 +112,9 @@ table th {
   font-size: 28px;
   color: #428bca;
 }
+
+/* line 81, ../sass/style.scss */
+.sm {
+  font-size: 10px;
+  color: darkgray;
+}

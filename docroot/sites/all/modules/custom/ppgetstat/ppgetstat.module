@@ -4,14 +4,13 @@
  * @file
  * Drupal.org statistics routines.
  */
-
 define('PPGETSTAT_USER_NODE_TYPE', 'user');
 // Number of users queued to be scanned per cron run.
 define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 100);
 // Number of calls to drupal.org per cron run.
 define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 800);
 // If no stats available we scan commits for last half a year.
-define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 6 * 30 * 24 * 60 * 60));
+define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 12 * 12 * 30 * 24 * 60 * 60));
 // We group statistics per week.
 define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 // Commmits type of data.
@@ -132,10 +131,76 @@ function ppgetstat_cron() {
   // Remove expired cached pages.
   _ppgetstat_cron_remove_cached_pages();
 
+  //Start users sync process with d.org
+  _ppgetstat_cron_create_users_queue();
+
+  //Process step of sync process.
+  _ppgetstat_cron_process_users_queue();
+
   $time_post = microtime(TRUE);
   $exec_time = round($time_post - $time_pre, 2);
   watchdog('ppgetstat_cron', $exec_time . 's ');
 
+}
+
+/**
+ * If period has passed, start rescan of available users list.
+ */
+function _ppgetstat_cron_create_users_queue() {
+  $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp');
+  // we are running users lists rescan each 2 days.
+  if ($last_cron_run > REQUEST_TIME - 6 * 60 * 60) {
+    return;
+  }
+  $queue = DrupalQueue::get('ppgetstat_users_scan');
+  $queue->createQueue();
+  $vocab = taxonomy_vocabulary_machine_name_load('users_list');
+  $terms = taxonomy_get_tree($vocab->vid);
+  foreach ($terms as $term) {
+    $term = taxonomy_term_load($term->tid);
+    $field_query = field_get_items('taxonomy_term', $term, 'field_query');
+    if (!empty($field_query)) {
+      $variables = array();
+      foreach ($field_query as $item) {
+        $variables[$item['first']] = $item['second'];
+      }
+      $r = _ppgetstat_api_call('https://www.drupal.org/','api-d7/user.json', $variables);
+      $last_url = parse_url($r->last);
+      parse_str($last_url['query'], $params);
+      for ($i = $params['page'] - 1; $i >= 0; $i--) {
+        $queue->createItem(array(
+          $variables, $i
+        ));
+      }
+    }
+  }
+  variable_set('ppgetstat_last_users_rescan_timestamp', REQUEST_TIME);
+}
+
+/**
+ * Process users queue
+ */
+function _ppgetstat_cron_process_users_queue() {
+  $last_cron_run = variable_get('ppgetstat_last_users_process_timestamp');
+  // we are running users lists rescan each 5 minutes.
+  if ($last_cron_run > REQUEST_TIME - 5 * 60) {
+    return;
+  }
+
+  $queue = DrupalQueue::get('ppgetstat_users_scan');
+  if ($queue->NumberOfItems() > 0) {
+    $item = $queue->claimItem();
+    if (!empty($item)) {
+      $variables = $item->data[0];
+      $page = $item->data[1];
+      _ppgetstat_sync_user_list_step($variables, $page);
+      $queue->deleteItem($item);
+    }
+  } else {
+    $queue->DeleteQueue();
+  }
+
+  variable_set('ppgetstat_last_users_process_timestamp', REQUEST_TIME);
 }
 
 /**
@@ -649,7 +714,7 @@ function _ppgetstat_api_call($site, $endpoint, $vars, $page = 0) {
 /**
  * Batch step function for syncing user list.
  */
-function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
+function _ppgetstat_sync_user_list_step($variables, $page) {
   for ($i = 0; $i < 10; $i++) {
     $r = _ppgetstat_api_call(
       'https://www.drupal.org/',
@@ -680,7 +745,6 @@ function _ppgetstat_sync_user_list_step($variables, $page, &$context) {
     watchdog('ppdorg_debug', 'Request returned error');
   }
 
-  $context['finished'] = 1;
 }
 
 /**
@@ -704,12 +768,28 @@ function _ppgetstat_process_dorg_users($users_data, $doids) {
 
   foreach ($doids as $uid) {
     // If user is not tracked yet - creating new empty node.
-    if (!in_array($uid, $existed_users)) {
+    if (!array_key_exists($uid, $existed_users)) {
       $node = new stdClass();
       $node->type = 'user';
       node_object_prepare($node);
     } else {
       $node = node_load($existed_users[$uid]);
+    }
+
+    $node->title = $users_data[$uid]->name;
+    $node->field_registered_at[LANGUAGE_NONE] = array(array('value' => $users_data[$uid]->created));
+    $node->field_user_id['und'] = array(array(
+      'value' => $uid,
+    ));
+
+    $user_mentors = $users_data[$uid]->field_mentors;
+    if (!empty($user_mentors)) {
+      $node->field_mentors[LANGUAGE_NONE] = array();
+      foreach ($user_mentors as $mentor) {
+        $node->field_mentors[LANGUAGE_NONE][] = array(
+          'value' => $mentor->id,
+        );
+      }
     }
 
     $user_organizations = $users_data[$uid]->field_organizations;
@@ -725,18 +805,17 @@ function _ppgetstat_process_dorg_users($users_data, $doids) {
         }
       }
       // Processing user companies.
+      $node->field_organisations[LANGUAGE_NONE] = array();
       foreach ($org_name as $on) {
-        $node->field_organisations['und'][] = _ppgetstat_vocab_term_tid($on, 'company');
+        $node->field_organisations[LANGUAGE_NONE][] = _ppgetstat_vocab_term_tid($on, 'company');
       }
       // Processing user job titles.
+      $node->field_job_titles[LANGUAGE_NONE] = array();
       foreach ($org_title as $ot) {
-        $node->field_job_titles['und'][] = _ppgetstat_vocab_term_tid($ot, 'job_title');
+        $node->field_job_titles[LANGUAGE_NONE][] = _ppgetstat_vocab_term_tid($ot, 'job_title');
       }
     }
-    $node->field_user_id['und'][] = array(
-      'value' => $uid,
-    );
-    $node->title = $users_data[$uid]->name;
+
     node_save($node);
   }
 }
@@ -765,6 +844,31 @@ function _ppgetstat_vocab_term_tid($name, $vocab_name) {
       'name' => trim(strtolower($name)),
     );
   }
+}
+
+/**
+ * Helper function that get info about individual membership.
+ */
+function _ppgetstat_get_individual_members() {
+  $assoc_result = cache_get('pp_frontpage_assoc_members');
+  if (empty($assoc_result)) {
+    $r = _ppgetstat_api_call('https://assoc.drupal.org/', 'api/association_members.json', array());
+    $members_stat = array();
+    foreach ($r->users as $temp) {
+      $user = $temp->user;
+      $user->Country = trim($user->Country);
+      if (empty($user->Country) || ($user->Country == 1)) {
+        $user->Country = 'COUNTRY_NOT_DEFINED';
+      }
+      $members_stat['members_country_count'][$user->Country] += 1;
+      $members_stat['members_country'][$user->Country][] = $user->user_name;
+    }
+    array_multisort($members_stat['members_country_count'], SORT_DESC,  SORT_NUMERIC);
+    cache_set('pp_frontpage_assoc_members', $members_stat);
+  } else {
+    $members_stat = $assoc_result->data;
+  }
+  return $members_stat;
 }
 
 /**

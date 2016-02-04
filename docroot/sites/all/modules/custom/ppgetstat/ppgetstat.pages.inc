@@ -212,66 +212,56 @@ function ppgetstat_sync_user_list($form, $form_state) {
 /**
  * Submit callback for sync user list form
  */
-function ppgetstat_sync_user_list_submit($form, $form_state) {
-  $direct_user = $form_state['values']['direct_user'];
-  if (!empty($direct_user)) {
-    $r = _ppgetstat_api_call(
-      'https://www.drupal.org/',
-      'api-d7/user.json',
-      array(
-        'uid' => $direct_user
-      )
-    );
-    $users_data = array(
-      $r->list[0]->uid => $r->list[0]
-    );
+function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
+  _ppgetstat_cron_create_users_queue();
 
-    _ppgetstat_process_dorg_users($users_data, array($r->list[0]->uid));
-    drupal_set_message('User has been updated');
-
-  } else {
-    $users_list_tid = $form_state['values']['users_list'];
-    $term = taxonomy_term_load($users_list_tid);
-    if (!empty($term)) {
-      $field_query = field_get_items('taxonomy_term', $term, 'field_query');
-      $variables = array('limit' => 7);
+  if (!empty($form_state['values']['direct_user'])) {
+    $user_data = ppgetstat_get_dorg_user($form_state['values']['direct_user']);
+    if (FALSE === $user_data) {
+      drupal_set_message(t('User cannot be found by "@argument" as an ID or name.', array(
+        '@argument' => $form_state['values']['direct_user'],
+      )), 'warning');
+    }
+    else {
+      _ppgetstat_process_dorg_users(array($user_data));
+      drupal_set_message(t('User "@name" has been updated.', array(
+        '@name' => $user_data->name,
+      )));
+    }
+  }
+  elseif (!empty($form_state['values']['users_list'])) {
+    $term = taxonomy_term_load($form_state['values']['users_list']);
+    $field_query = field_get_items('taxonomy_term', $term, 'field_query');
+    $variables = array('limit' => 50);
+    if (FALSE !== $field_query) {
       foreach ($field_query as $item) {
         $variables[$item['first']] = $item['second'];
       }
-
-      $r = _ppgetstat_api_call(
-        'https://www.drupal.org/',
-        'api-d7/user.json',
-        $variables
-      );
-
-      if (!empty($r) && (!empty($r->last))) {
-        $last_url = parse_url($r->last);
-        parse_str($last_url['query'], $params);
-        $page = $params['page'];
-        for ($i = ($page - 1); $i >= 0; $i--) {
-          $operations[] = array(
-            '_ppgetstat_sync_user_list_step',
-            array($variables, $i),
-          );
-        }
-        $batch = array(
-          'operations' => $operations,
-          'finished' => '_ppgetstat_batch_finished',
+    }
+    $r = _ppgetstat_api_call('https://www.drupal.org/', 'api-d7/user.json', $variables);
+    if (!empty($r->last)) {
+      $last_url = parse_url($r->last);
+      parse_str($last_url['query'], $params);
+      for ($i = $params['page'] - 1; $i >= 0; $i--) {
+        $operations[] = array('_ppgetstat_sync_user_list_step', array($variables, $i));
+      }
+      if (isset($operations)) {
+        /*batch_set(array(
           'title' => t('Processing import...'),
+          'finished' => '_ppgetstat_batch_finished',
+          'operations' => $operations,
           'init_message' => t('Batch is starting.'),
-        );
-        batch_set($batch);
+        ));*/
       }
       else {
-        drupal_set_message('Error with getting initial data', 'error');
+        drupal_set_message(t('Nothing to process.'), 'warning');
       }
-
     }
     else {
-      drupal_set_message('Import process could not be started');
+      drupal_set_message(t('Error with getting initial data.'), 'error');
     }
   }
+  else {
+    drupal_set_message(t('You are not selected any import criteria.'), 'warning');
+  }
 }
-
-
