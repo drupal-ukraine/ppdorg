@@ -66,7 +66,7 @@ function _ppcc_commits_data($node) {
   )->fetchAllKeyed();
 
   $beginning = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
-  $timestamp = $beginning - ($beginning % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+  $timestamp = $beginning - ($beginning % PPGETSTAT_TIME_WEEK_GRANULARITY);
 
   $table_data = array();
   while ($timestamp < REQUEST_TIME) {
@@ -79,7 +79,7 @@ function _ppcc_commits_data($node) {
       $commits,
     );
 
-    $timestamp += PPGETSTAT_TIME_PERIOD_GRANULARITY;
+    $timestamp += PPGETSTAT_TIME_WEEK_GRANULARITY;
   }
 
   return $table_data;

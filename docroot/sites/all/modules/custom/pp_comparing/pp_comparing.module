@@ -123,7 +123,7 @@ function _pp_comparing_users_data($users, $types, $dates) {
     $db_data = $query->execute()->fetchAllAssoc('timestamp');
 
     $beginning = (!empty($dates['from'])) ? $dates['from'] : REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
-    $timestamp = $beginning - ($beginning % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    $timestamp = $beginning - ($beginning % PPGETSTAT_TIME_WEEK_GRANULARITY);
 
     $till_time = !empty($dates['till']) ? $dates['till'] : REQUEST_TIME;
     while ($timestamp < $till_time) {
@@ -134,7 +134,7 @@ function _pp_comparing_users_data($users, $types, $dates) {
       $table_data[$timestamp]['timestamp'] = format_date($timestamp, 'custom', 'j M y');
       $table_data[$timestamp][$doid] = $commits;
 
-      $timestamp += PPGETSTAT_TIME_PERIOD_GRANULARITY;
+      $timestamp += PPGETSTAT_TIME_WEEK_GRANULARITY;
     }
 
   }

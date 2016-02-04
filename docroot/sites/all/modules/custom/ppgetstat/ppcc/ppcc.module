@@ -94,7 +94,7 @@ function _ppcc_parse_core_commits($page_content, $data) {
       continue;
     }
 
-    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_WEEK_GRANULARITY);
     $last_commits = variable_get('ppgetstat_ppcc_last_commit_timestamp', array($data['doid'] => array($period_timestamp => 0)));
 
     // Save latest commit's date per week into variable.

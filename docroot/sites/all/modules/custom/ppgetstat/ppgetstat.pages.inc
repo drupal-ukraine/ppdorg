@@ -65,7 +65,7 @@ function _ppgetstat_get_commits_data($node) {
   )->fetchAllKeyed();
 
   $beginning = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
-  $timestamp = $beginning - ($beginning % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+  $timestamp = $beginning - ($beginning % PPGETSTAT_TIME_WEEK_GRANULARITY);
 
   $table_data = array();
   while ($timestamp < REQUEST_TIME) {
@@ -78,7 +78,7 @@ function _ppgetstat_get_commits_data($node) {
       $commits,
     );
 
-    $timestamp += PPGETSTAT_TIME_PERIOD_GRANULARITY;
+    $timestamp += PPGETSTAT_TIME_WEEK_GRANULARITY;
   }
 
   return $table_data;
@@ -87,7 +87,12 @@ function _ppgetstat_get_commits_data($node) {
 /**
  * Form builder for reset stats form.
  */
-function ppgetstat_reset_form($form, $form_state) {
+function ppgetstat_reset_form(array $form, array &$form_state) {
+  $titles = array();
+
+  foreach (node_load_multiple(array(), array('type' => PPGETSTAT_USER_NODE_TYPE)) as $user_node) {
+    $titles[] = $user_node->title;
+  }
 
   $form['markup'] = array(
     '#type' => 'item',
@@ -96,16 +101,11 @@ function ppgetstat_reset_form($form, $form_state) {
 
   $form['stats_period'] = array(
     '#type' => 'textfield',
-    '#title' => t('Scanning period'),
+    '#title' => t('Scanning period (number of months)'),
     '#element_validate' => array('element_validate_integer_positive'),
-    '#default_value' => variable_get('ppgetstat_stats_period', 6 * 30 * 24 * 60 * 60),
-    '#description' => t('For debugging purposes we can shorten period of grabbing stats. By default it is half a year 15552000, but we can set it to one month 2592000.')
+    '#default_value' => PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING / PPGETSTAT_TIME_MONTH_GRANULARITY,
+    '#description' => t('For debugging purposes we can shorten period of grabbing stats.'),
   );
-
-  $titles = array();
-  foreach (node_load_multiple(array(), array('type' => PPGETSTAT_USER_NODE_TYPE)) as $user_node) {
-    $titles[] = $user_node->title;
-  }
 
   $form['users'] = array(
     '#type' => 'select',
@@ -127,9 +127,9 @@ function ppgetstat_reset_form($form, $form_state) {
 /**
  * Submit handler for reset form.
  */
-function ppgetstat_reset_form_submit($form, $form_state) {
+function ppgetstat_reset_form_submit(array $form, array &$form_state) {
   if (!empty($form_state['values']['stats_period'])) {
-    variable_set('ppgetstat_stats_period', $form_state['values']['stats_period']);
+    ppgetstat_stats_period($form_state['values']['stats_period']);
 
     variable_del('ppgetstat_last_statsjobs_timestamp');
     db_query('TRUNCATE TABLE {ppgetstat}');
