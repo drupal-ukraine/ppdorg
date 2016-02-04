@@ -1,0 +1,42 @@
+name = Coty Bootstrap
+description = Uses the Bootstrap Framework LESS source files and must be compiled (not for beginners).
+core = 7.x
+base theme = bootstrap
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Regions
+;;;;;;;;;;;;;;;;;;;;;
+
+regions[navigation]     = 'Navigation'
+regions[header]         = 'Top Bar'
+regions[highlighted]    = 'Highlighted'
+regions[help]           = 'Help'
+regions[content]        = 'Content'
+regions[sidebar_first]  = 'Primary'
+regions[sidebar_second] = 'Secondary'
+regions[footer]         = 'Footer'
+regions[page_top]       = 'Page top'
+regions[page_bottom]    = 'Page bottom'
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Stylesheets
+;;;;;;;;;;;;;;;;;;;;;
+stylesheets[all][] = js/bootstrap-select/bootstrap-select.css
+stylesheets[all][] = css/style.css
+stylesheets[all][] = css/ie.css
+stylesheets[all][] = css/screen.css
+stylesheets[all][] = css/print.css
+
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Scripts
+;;;;;;;;;;;;;;;;;;;;;
+
+
+scripts[] = 'js/bootstrap-select/js/bootstrap-select.js'
+
+
+scripts[] = 'js/project.js'
