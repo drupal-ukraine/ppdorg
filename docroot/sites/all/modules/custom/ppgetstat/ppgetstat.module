@@ -778,12 +778,13 @@ function _ppgetstat_process_dorg_users($users_data, $doids) {
 
     $node->title = $users_data[$uid]->name;
     $node->field_registered_at[LANGUAGE_NONE] = array(array('value' => $users_data[$uid]->created));
-    $node->field_user_id['und'][] = array(
+    $node->field_user_id['und'] = array(array(
       'value' => $uid,
-    );
+    ));
 
     $user_mentors = $users_data[$uid]->field_mentors;
     if (!empty($user_mentors)) {
+      $node->field_mentors[LANGUAGE_NONE] = array();
       foreach ($user_mentors as $mentor) {
         $node->field_mentors[LANGUAGE_NONE][] = array(
           'value' => $mentor->id,
