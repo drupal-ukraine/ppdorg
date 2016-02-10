@@ -37,6 +37,7 @@ dependencies[] = pp_comparing
 ; Features
 dependencies[] = comparing_page
 dependencies[] = ppdorg_user_content
+dependencies[] = ppdorg_event_content
 dependencies[] = ppgetstat_variables
 dependencies[] = ppdorg_frontpage
 dependencies[] = ppdorg_all_users_feature
