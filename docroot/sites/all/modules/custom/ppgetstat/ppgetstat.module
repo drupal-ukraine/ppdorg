@@ -169,7 +169,7 @@ function _ppgetstat_cron_create_users_queue() {
       parse_str($last_url['query'], $params);
       for ($i = $params['page'] - 1; $i >= 0; $i--) {
         $queue->createItem(array(
-          $variables, $i
+          $variables, $i, $term->tid
         ));
       }
     }
@@ -193,7 +193,8 @@ function _ppgetstat_cron_process_users_queue() {
     if (!empty($item)) {
       $variables = $item->data[0];
       $page = $item->data[1];
-      _ppgetstat_sync_user_list_step($variables, $page);
+      $tid = $item->data[2];
+      _ppgetstat_sync_user_list_step($variables, $page, $tid);
       $queue->deleteItem($item);
     }
   } else {
@@ -714,7 +715,7 @@ function _ppgetstat_api_call($site, $endpoint, $vars, $page = 0) {
 /**
  * Batch step function for syncing user list.
  */
-function _ppgetstat_sync_user_list_step($variables, $page) {
+function _ppgetstat_sync_user_list_step($variables, $page, $tid) {
   for ($i = 0; $i < 10; $i++) {
     $r = _ppgetstat_api_call(
       'https://www.drupal.org/',
@@ -739,7 +740,7 @@ function _ppgetstat_sync_user_list_step($variables, $page) {
     }
 
     // Process list and add/update user nodes.
-    _ppgetstat_process_dorg_users($users_data, $uids);
+    _ppgetstat_process_dorg_users($users_data, $uids, $tid);
 
   } else {
     watchdog('ppdorg_debug', 'Request returned error');
@@ -754,7 +755,7 @@ function _ppgetstat_sync_user_list_step($variables, $page) {
  * @param $doids
  * @throws \Exception
  */
-function _ppgetstat_process_dorg_users($users_data, $doids) {
+function _ppgetstat_process_dorg_users($users_data, $doids, $tid) {
 
   $existed_users_query = db_select('field_data_field_user_id', 'u')
     ->fields('u', array('entity_id','field_user_id_value'))
@@ -777,6 +778,7 @@ function _ppgetstat_process_dorg_users($users_data, $doids) {
     }
 
     $node->title = $users_data[$uid]->name;
+    $node->field_user_lists[LANGUAGE_NONE] = array(array('tid' => $tid));
     $node->field_registered_at[LANGUAGE_NONE] = array(array('value' => $users_data[$uid]->created));
     $node->field_user_id['und'] = array(array(
       'value' => $uid,

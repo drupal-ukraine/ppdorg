@@ -33,7 +33,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
   $output = '<div class="bs-callout bs-callout-info">' . t('Statistics for the last 12 years') . '</div>';
   $query = 'SELECT doid, SUM(items) as counter  FROM {ppgetstat} '
     . 'WHERE type = :type AND timestamp > :timestamp '
-    . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,100';
+    . 'GROUP BY doid ORDER BY counter DESC LIMIT 0,200';
 
   $last_thee_months = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
 

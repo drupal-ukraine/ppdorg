@@ -32,6 +32,7 @@ function pp_frontpage_mentors_stat_content_type_render($subtype, $conf, $panel_a
       l($temp->title, 'http://drupal.org/user/' . $temp->field_mentors_value, array('external' => TRUE)),
       $temp->kol,
     );
+    $i++;
   }
 
   $block->content = array(
