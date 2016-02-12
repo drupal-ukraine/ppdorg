@@ -1,9 +1,10 @@
 <?php
 
 $plugin = array(
-'title' => t('Community quality'),
-'single' => TRUE,
-'category' => t('PP'),
+  'title' => t('Community quality'),
+  'single' => TRUE,
+  'category' => t('PP'),
+  'required context' => new ctools_context_required('title','taxonomy_term'),
 );
 
 /**
