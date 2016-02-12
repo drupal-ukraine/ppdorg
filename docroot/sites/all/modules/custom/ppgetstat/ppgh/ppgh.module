@@ -49,8 +49,6 @@ function _ppgh_get_github_activity_tracking_url($data) {
  * Parse github activity data page.
  */
 function _ppgh_parse_github_activity($page_content, $data) {
-  $last_scan = $data['last_scan'];
-
   if (empty($page_content)) {
     throw new Exception('Empty page content.');
   }
@@ -63,7 +61,7 @@ function _ppgh_parse_github_activity($page_content, $data) {
   foreach ($json_decoded as $day) {
     $commit_timestamp = strtotime($day[0]);
     $day_commits_count = (int) $day[1];
-    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
+    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_WEEK_GRANULARITY);
 
     if (!isset($commits_counter_array[$period_timestamp])) {
       $commits_counter_array[$period_timestamp] = 0;
