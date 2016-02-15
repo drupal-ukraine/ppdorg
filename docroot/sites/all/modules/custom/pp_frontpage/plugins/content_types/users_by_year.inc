@@ -85,12 +85,13 @@ function pp_frontpage_users_by_year_content_type_render($subtype, $conf, $panel_
       $rheader = array(
         $header[$id],
         $active_commiters_by_year[$id],
-        $active_commenters_by_year[$id]
+        $active_commenters_by_year[$id],
+        t('Registered users')
       );
       continue;
     }
     $rrows[] = array(
-      $header[$id], $active_commiters_by_year[$header[$id]], $active_commenters_by_year[$header[$id]]
+      $header[$id], $active_commiters_by_year[$header[$id]], $active_commenters_by_year[$header[$id]], count($years_users[$header[$id]])
     );
 
   }
