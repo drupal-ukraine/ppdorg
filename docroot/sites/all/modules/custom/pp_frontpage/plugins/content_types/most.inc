@@ -49,7 +49,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
     'Commits' => PPGETSTAT_TYPE_COMMITS,
     'Comments' => PPGETSTAT_TYPE_COMMENTS,
  //   'Core commits' => PPGETSTAT_TYPE_CORE_COMMITS,
-    'Github.com activity' => PPGETSTAT_TYPE_GITHUB_ACTIVITY,
+  //  'Github.com activity' => PPGETSTAT_TYPE_GITHUB_ACTIVITY,
   );
   $table_header = array(t('Position'), t('user'), t('companies worked for') , t('counter'), t('D.org link'));
   foreach ($types as $title => $data_type) {
