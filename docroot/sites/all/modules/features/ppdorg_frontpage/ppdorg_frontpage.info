@@ -11,6 +11,7 @@ features[ctools][] = page_manager:pages_default:1
 features[ctools][] = strongarm:strongarm:1
 features[ctools][] = views:views_default:3.0
 features[features_api][] = api:2
+features[page_manager_handlers][] = term_view__panel_context_118b0053-3bf1-461f-8d0d-248a7f1c4190
 features[page_manager_pages][] = homepage
 features[variable][] = site_frontpage
 features[views_view][] = top_companies

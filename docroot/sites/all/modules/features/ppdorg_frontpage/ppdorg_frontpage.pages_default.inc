@@ -5,6 +5,145 @@
  */
 
 /**
+ * Implements hook_default_page_manager_handlers().
+ */
+function ppdorg_frontpage_default_page_manager_handlers() {
+  $export = array();
+
+  $handler = new stdClass();
+  $handler->disabled = FALSE; /* Edit this to true to make a default handler disabled initially */
+  $handler->api_version = 1;
+  $handler->name = 'term_view__panel_context_118b0053-3bf1-461f-8d0d-248a7f1c4190';
+  $handler->task = 'term_view';
+  $handler->subtask = '';
+  $handler->handler = 'panel_context';
+  $handler->weight = 0;
+  $handler->conf = array(
+    'title' => 'term_panel',
+    'no_blocks' => 0,
+    'pipeline' => 'standard',
+    'body_classes_to_remove' => '',
+    'body_classes_to_add' => '',
+    'css_id' => '',
+    'css' => '',
+    'contexts' => array(),
+    'relationships' => array(),
+    'name' => '',
+    'access' => array(
+      'logic' => 'and',
+      'plugins' => array(
+        0 => array(
+          'name' => 'term_vocabulary',
+          'settings' => array(
+            'machine_name' => array(
+              'users_list' => 'users_list',
+            ),
+          ),
+          'context' => 'argument_term_1',
+          'not' => FALSE,
+        ),
+      ),
+    ),
+  );
+  $display = new panels_display();
+  $display->layout = 'flexible';
+  $display->layout_settings = array();
+  $display->panel_settings = array(
+    'style_settings' => array(
+      'default' => NULL,
+      'center' => NULL,
+    ),
+  );
+  $display->cache = array();
+  $display->title = '';
+  $display->uuid = 'c2c3acbe-5198-4d25-9713-80c781bf18fd';
+  $display->content = array();
+  $display->panels = array();
+    $pane = new stdClass();
+    $pane->pid = 'new-b021dc71-4ca8-4c0c-9de3-026687a7c86f';
+    $pane->panel = 'center';
+    $pane->type = 'community_quality';
+    $pane->subtype = 'community_quality';
+    $pane->shown = TRUE;
+    $pane->access = array();
+    $pane->configuration = array();
+    $pane->cache = array();
+    $pane->style = array(
+      'settings' => NULL,
+    );
+    $pane->css = array();
+    $pane->extras = array();
+    $pane->position = 0;
+    $pane->locks = array();
+    $pane->uuid = 'b021dc71-4ca8-4c0c-9de3-026687a7c86f';
+    $display->content['new-b021dc71-4ca8-4c0c-9de3-026687a7c86f'] = $pane;
+    $display->panels['center'][0] = 'new-b021dc71-4ca8-4c0c-9de3-026687a7c86f';
+    $pane = new stdClass();
+    $pane->pid = 'new-2df86a69-2fba-446b-be4a-aa1492cea63c';
+    $pane->panel = 'center';
+    $pane->type = 'mentors_stat';
+    $pane->subtype = 'mentors_stat';
+    $pane->shown = TRUE;
+    $pane->access = array();
+    $pane->configuration = array();
+    $pane->cache = array();
+    $pane->style = array(
+      'settings' => NULL,
+    );
+    $pane->css = array();
+    $pane->extras = array();
+    $pane->position = 1;
+    $pane->locks = array();
+    $pane->uuid = '2df86a69-2fba-446b-be4a-aa1492cea63c';
+    $display->content['new-2df86a69-2fba-446b-be4a-aa1492cea63c'] = $pane;
+    $display->panels['center'][1] = 'new-2df86a69-2fba-446b-be4a-aa1492cea63c';
+    $pane = new stdClass();
+    $pane->pid = 'new-cf9aa361-5345-446b-90e1-d30a9ddc2c00';
+    $pane->panel = 'center';
+    $pane->type = 'most';
+    $pane->subtype = 'most';
+    $pane->shown = TRUE;
+    $pane->access = array();
+    $pane->configuration = array();
+    $pane->cache = array();
+    $pane->style = array(
+      'settings' => NULL,
+    );
+    $pane->css = array();
+    $pane->extras = array();
+    $pane->position = 2;
+    $pane->locks = array();
+    $pane->uuid = 'cf9aa361-5345-446b-90e1-d30a9ddc2c00';
+    $display->content['new-cf9aa361-5345-446b-90e1-d30a9ddc2c00'] = $pane;
+    $display->panels['center'][2] = 'new-cf9aa361-5345-446b-90e1-d30a9ddc2c00';
+    $pane = new stdClass();
+    $pane->pid = 'new-db89e7c5-52cd-4f4f-9799-4bef750172cb';
+    $pane->panel = 'center';
+    $pane->type = 'users_by_year';
+    $pane->subtype = 'users_by_year';
+    $pane->shown = TRUE;
+    $pane->access = array();
+    $pane->configuration = array();
+    $pane->cache = array();
+    $pane->style = array(
+      'settings' => NULL,
+    );
+    $pane->css = array();
+    $pane->extras = array();
+    $pane->position = 3;
+    $pane->locks = array();
+    $pane->uuid = 'db89e7c5-52cd-4f4f-9799-4bef750172cb';
+    $display->content['new-db89e7c5-52cd-4f4f-9799-4bef750172cb'] = $pane;
+    $display->panels['center'][3] = 'new-db89e7c5-52cd-4f4f-9799-4bef750172cb';
+  $display->hide_title = PANELS_TITLE_FIXED;
+  $display->title_pane = '0';
+  $handler->conf['display'] = $display;
+  $export['term_view__panel_context_118b0053-3bf1-461f-8d0d-248a7f1c4190'] = $handler;
+
+  return $export;
+}
+
+/**
  * Implements hook_default_page_manager_pages().
  */
 function ppdorg_frontpage_default_page_manager_pages() {
