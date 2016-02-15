@@ -15,7 +15,6 @@ function pp_frontpage_community_quality_content_type_render($subtype, $conf, $pa
   // Localising of user group display to.
   $user_lists_object = $context->data;
   $user_lists_tid = $context->data->tid;
-  dpm($user_lists_object);
   //@TODO make country fetch configurable.
   $field_query = field_get_items('taxonomy_term', $user_lists_object, 'field_query');
   $country = $field_query[0]['second'];
@@ -27,7 +26,6 @@ function pp_frontpage_community_quality_content_type_render($subtype, $conf, $pa
   // Getting info for showing count of individual members at this country.
   $members_stat = _ppgetstat_get_individual_members();
 
-  //@TODO add user list filtering for future.
   $all_user_query = db_select('node', 'n');
   $all_user_query->innerJoin('field_data_field_user_lists', 'fu', 'fu.entity_id = n.nid');
   $all_user_query->condition('n.type', 'user');
