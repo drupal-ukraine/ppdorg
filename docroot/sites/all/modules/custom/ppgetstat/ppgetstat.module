@@ -863,7 +863,6 @@ function _ppgetstat_get_individual_members() {
         $user->Country = 'COUNTRY_NOT_DEFINED';
       }
       isset($members_stat['members_country_count'][$user->Country]) ? $members_stat['members_country_count'][$user->Country] += 1 : $members_stat['members_country_count'][$user->Country] = 0;
-      // $members_stat['members_country_count'][$user->Country] += 1;
       $members_stat['members_country'][$user->Country][] = $user->user_name;
     }
     array_multisort($members_stat['members_country_count'], SORT_DESC,  SORT_NUMERIC);
