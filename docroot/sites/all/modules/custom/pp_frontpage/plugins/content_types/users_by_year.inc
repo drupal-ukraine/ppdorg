@@ -69,14 +69,37 @@ function pp_frontpage_users_by_year_content_type_render($subtype, $conf, $panel_
   $block->title = t('Users registered by year statistics');
   $header = array(t('Type of info \ Year'));
   $header += array_keys($years_stat);
+  // Wide table
+  //  $block->content = array(
+  //    '#theme' => 'table',
+  //    '#header' => $header,
+  //    '#rows' => array(
+  //      array_values($years_stat),
+  //      array_values($active_commiters_by_year),
+  //      array_values($active_commenters_by_year)
+  //    )
+  //  );
+
+  foreach ($header as $id => $data) {
+    if ($id == 0) {
+      $rheader = array(
+        $header[$id],
+        $active_commiters_by_year[$id],
+        $active_commenters_by_year[$id]
+      );
+      continue;
+    }
+    $rrows[] = array(
+      $header[$id], $active_commiters_by_year[$header[$id]], $active_commenters_by_year[$header[$id]]
+    );
+
+  }
+
+
   $block->content = array(
     '#theme' => 'table',
-    '#header' => $header,
-    '#rows' => array(
-      array_values($years_stat),
-      array_values($active_commiters_by_year),
-      array_values($active_commenters_by_year)
-    )
+    '#header' => $rheader,
+    '#rows' => $rrows
   );
   return $block;
 }
