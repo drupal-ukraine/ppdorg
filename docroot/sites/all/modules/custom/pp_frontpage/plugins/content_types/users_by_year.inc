@@ -4,6 +4,7 @@ $plugin = array(
   'title' => t('Users registration stat by year'),
   'single' => TRUE,
   'category' => t('PP'),
+  'required context' => new ctools_context_required('title','taxonomy_term'),
 );
 
 /**
@@ -11,8 +12,14 @@ $plugin = array(
  */
 function pp_frontpage_users_by_year_content_type_render($subtype, $conf, $panel_args, $context) {
 
+  // Localising of user group display to.
+  $user_lists_object = $context->data;
+  $user_lists_tid = $context->data->tid;
+
   $query = db_select('field_data_field_registered_at', 'f');
   $query->innerJoin('field_data_field_user_id', 'fd', 'f.entity_id = fd.entity_id');
+  $query->innerJoin('field_data_field_user_lists', 'fu', 'fu.entity_id = fd.entity_id');
+  $query->condition('fu.field_user_lists_tid', $user_lists_tid);
   $query->fields('f', array('entity_id','field_registered_at_value'));
   $query->fields('fd', array('field_user_id_value'));
   $query->groupBy('f.entity_id');
