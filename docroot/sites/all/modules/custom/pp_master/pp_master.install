@@ -41,3 +41,10 @@ function pp_master_update_7003() {
 function pp_master_update_7004() {
   module_enable(array('date_api'));
 }
+
+/**
+ * Making frontpage more better to view according to latest additions.
+ */
+function pp_master_update_7005() {
+  features_revert_module('ppdorg_frontpage');
+}
