@@ -854,13 +854,15 @@ function _ppgetstat_get_individual_members() {
   if (empty($assoc_result)) {
     $r = _ppgetstat_api_call('https://assoc.drupal.org/', 'api/association_members.json', array());
     $members_stat = array();
+    $members_stat['members_country_count'] = array();
+    $members_stat['members_country'] = array();
     foreach ($r->users as $temp) {
       $user = $temp->user;
       $user->Country = trim($user->Country);
       if (empty($user->Country) || ($user->Country == 1)) {
         $user->Country = 'COUNTRY_NOT_DEFINED';
       }
-      $members_stat['members_country_count'][$user->Country] += 1;
+      isset($members_stat['members_country_count'][$user->Country]) ? $members_stat['members_country_count'][$user->Country] += 1 : $members_stat['members_country_count'][$user->Country] = 0;
       $members_stat['members_country'][$user->Country][] = $user->user_name;
     }
     array_multisort($members_stat['members_country_count'], SORT_DESC,  SORT_NUMERIC);
