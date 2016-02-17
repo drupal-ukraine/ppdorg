@@ -146,19 +146,20 @@ function ppgetstat_cron() {
 /**
  * If period has passed, start rescan of available users list.
  */
-function _ppgetstat_cron_create_users_queue() {
+function _ppgetstat_cron_create_users_queue($force = FALSE) {
 
   $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp');
   // we are running users lists rescan each 2 days.
-  if ($last_cron_run > REQUEST_TIME - 12*60*60) {
+  if (($last_cron_run > REQUEST_TIME - 2*24*60*60) || (!$force)) {
     return;
   }
+
   $queue = DrupalQueue::get('ppgetstat_users_scan');
   $queue->createQueue();
   $vocab = taxonomy_vocabulary_machine_name_load('users_list');
   $terms = taxonomy_get_tree($vocab->vid);
-  foreach ($terms as $term) {
-    $term = taxonomy_term_load($term->tid);
+  foreach ($terms as $t) {
+    $term = taxonomy_term_load($t->tid);
     $field_query = field_get_items('taxonomy_term', $term, 'field_query');
     if (!empty($field_query)) {
       $variables = array();
