@@ -89,7 +89,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
     $output .= '</div>';
   }
 
-  cache_set(__FUNCTION__, $output, 'cache', CACHE_TEMPORARY);
+  cache_set(__FUNCTION__ . ':' . $user_lists_tid, $output, 'cache', CACHE_TEMPORARY);
 
   $block->content = $output;
   return $block;
