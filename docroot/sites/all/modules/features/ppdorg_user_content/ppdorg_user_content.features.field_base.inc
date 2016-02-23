@@ -125,6 +125,36 @@ function ppdorg_user_content_field_default_field_bases() {
     'type' => 'taxonomy_term_reference',
   );
 
+  // Exported field_base: 'field_query'.
+  $field_bases['field_query'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_query',
+    'indexes' => array(),
+    'locked' => 0,
+    'module' => 'double_field',
+    'settings' => array(
+      'first' => array(
+        'maxlength' => 255,
+        'precision' => 10,
+        'scale' => 2,
+        'size' => 'normal',
+        'type' => 'varchar',
+      ),
+      'second' => array(
+        'maxlength' => 1024,
+        'precision' => 10,
+        'scale' => 2,
+        'size' => 'normal',
+        'type' => 'varchar',
+      ),
+    ),
+    'translatable' => 0,
+    'type' => 'double_field',
+  );
+
   // Exported field_base: 'field_registered_at'.
   $field_bases['field_registered_at'] = array(
     'active' => 1,
@@ -154,6 +184,36 @@ function ppdorg_user_content_field_default_field_bases() {
     'type' => 'datestamp',
   );
 
+  // Exported field_base: 'field_request_query'.
+  $field_bases['field_request_query'] = array(
+    'active' => 1,
+    'cardinality' => -1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_request_query',
+    'indexes' => array(),
+    'locked' => 0,
+    'module' => 'double_field',
+    'settings' => array(
+      'first' => array(
+        'maxlength' => 255,
+        'precision' => 10,
+        'scale' => 2,
+        'size' => 'normal',
+        'type' => 'varchar',
+      ),
+      'second' => array(
+        'maxlength' => 255,
+        'precision' => 10,
+        'scale' => 2,
+        'size' => 'normal',
+        'type' => 'varchar',
+      ),
+    ),
+    'translatable' => 0,
+    'type' => 'double_field',
+  );
+
   // Exported field_base: 'field_user_id'.
   $field_bases['field_user_id'] = array(
     'active' => 1,
@@ -173,6 +233,32 @@ function ppdorg_user_content_field_default_field_bases() {
     ),
     'translatable' => 0,
     'type' => 'text',
+  );
+
+  // Exported field_base: 'field_user_lists'.
+  $field_bases['field_user_lists'] = array(
+    'active' => 1,
+    'cardinality' => -1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_user_lists',
+    'indexes' => array(
+      'tid' => array(
+        0 => 'tid',
+      ),
+    ),
+    'locked' => 0,
+    'module' => 'taxonomy',
+    'settings' => array(
+      'allowed_values' => array(
+        0 => array(
+          'vocabulary' => 'users_list',
+          'parent' => 0,
+        ),
+      ),
+    ),
+    'translatable' => 0,
+    'type' => 'taxonomy_term_reference',
   );
 
   return $field_bases;
