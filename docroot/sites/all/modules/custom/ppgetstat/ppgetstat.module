@@ -146,18 +146,20 @@ function ppgetstat_cron() {
 /**
  * If period has passed, start rescan of available users list.
  */
-function _ppgetstat_cron_create_users_queue() {
+function _ppgetstat_cron_create_users_queue($force = FALSE) {
+
   $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp');
   // we are running users lists rescan each 2 days.
-  if ($last_cron_run > REQUEST_TIME - 6 * 60 * 60) {
+  if (($last_cron_run > REQUEST_TIME - 2*24*60*60) || (!$force)) {
     return;
   }
+
   $queue = DrupalQueue::get('ppgetstat_users_scan');
   $queue->createQueue();
   $vocab = taxonomy_vocabulary_machine_name_load('users_list');
   $terms = taxonomy_get_tree($vocab->vid);
-  foreach ($terms as $term) {
-    $term = taxonomy_term_load($term->tid);
+  foreach ($terms as $t) {
+    $term = taxonomy_term_load($t->tid);
     $field_query = field_get_items('taxonomy_term', $term, 'field_query');
     if (!empty($field_query)) {
       $variables = array();
@@ -169,7 +171,7 @@ function _ppgetstat_cron_create_users_queue() {
       parse_str($last_url['query'], $params);
       for ($i = $params['page'] - 1; $i >= 0; $i--) {
         $queue->createItem(array(
-          $variables, $i
+          $variables, $i, $term->tid
         ));
       }
     }
@@ -193,7 +195,8 @@ function _ppgetstat_cron_process_users_queue() {
     if (!empty($item)) {
       $variables = $item->data[0];
       $page = $item->data[1];
-      _ppgetstat_sync_user_list_step($variables, $page);
+      $tid = $item->data[2];
+      _ppgetstat_sync_user_list_step($variables, $page, $tid);
       $queue->deleteItem($item);
     }
   } else {
@@ -284,15 +287,17 @@ function _ppgetstat_cron_processItem_stats_jobs() {
       ), WATCHDOG_ERROR);
       return;
     }
-    foreach ($generate_urls_function($item->data) as $url) {
-      // We keep the id of the stats_jobs queue to group all dorg_scrapping jobs.
-      $scrapping_job = array(
-        'id' => $item->item_id,
-        'url' => $url,
-        'data' => $item->data,
-        'parse_pages_callback' => $item->data['parse_pages_callback'],
-      );
-      $dorg_scrapping_queue->createItem($scrapping_job);
+    if (!empty($generate_urls_function)) {
+      foreach ($generate_urls_function($item->data) as $url) {
+        // We keep the id of the stats_jobs queue to group all dorg_scrapping jobs.
+        $scrapping_job = array(
+          'id' => $item->item_id,
+          'url' => $url,
+          'data' => $item->data,
+          'parse_pages_callback' => $item->data['parse_pages_callback'],
+        );
+        $dorg_scrapping_queue->createItem($scrapping_job);
+      }
     }
 
     $stats_jobs_queue->deleteItem($item);
@@ -714,7 +719,7 @@ function _ppgetstat_api_call($site, $endpoint, $vars, $page = 0) {
 /**
  * Batch step function for syncing user list.
  */
-function _ppgetstat_sync_user_list_step($variables, $page) {
+function _ppgetstat_sync_user_list_step($variables, $page, $tid) {
   for ($i = 0; $i < 10; $i++) {
     $r = _ppgetstat_api_call(
       'https://www.drupal.org/',
@@ -739,7 +744,7 @@ function _ppgetstat_sync_user_list_step($variables, $page) {
     }
 
     // Process list and add/update user nodes.
-    _ppgetstat_process_dorg_users($users_data, $uids);
+    _ppgetstat_process_dorg_users($users_data, $uids, $tid);
 
   } else {
     watchdog('ppdorg_debug', 'Request returned error');
@@ -754,8 +759,7 @@ function _ppgetstat_sync_user_list_step($variables, $page) {
  * @param $doids
  * @throws \Exception
  */
-function _ppgetstat_process_dorg_users($users_data, $doids) {
-
+function _ppgetstat_process_dorg_users($users_data, $doids, $tid) {
   $existed_users_query = db_select('field_data_field_user_id', 'u')
     ->fields('u', array('entity_id','field_user_id_value'))
     ->condition('u.field_user_id_value', $doids, 'IN')
@@ -777,8 +781,9 @@ function _ppgetstat_process_dorg_users($users_data, $doids) {
     }
 
     $node->title = $users_data[$uid]->name;
+    $node->field_user_lists[LANGUAGE_NONE] = array(array('tid' => $tid));
     $node->field_registered_at[LANGUAGE_NONE] = array(array('value' => $users_data[$uid]->created));
-    $node->field_user_id['und'] = array(array(
+    $node->field_user_id[LANGUAGE_NONE] = array(array(
       'value' => $uid,
     ));
 

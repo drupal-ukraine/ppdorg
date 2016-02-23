@@ -213,7 +213,7 @@ function ppgetstat_sync_user_list($form, $form_state) {
  * Submit callback for sync user list form
  */
 function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
-  _ppgetstat_cron_create_users_queue();
+  _ppgetstat_cron_create_users_queue(TRUE);
 
   if (!empty($form_state['values']['direct_user'])) {
     $user_data = ppgetstat_get_dorg_user($form_state['values']['direct_user']);
