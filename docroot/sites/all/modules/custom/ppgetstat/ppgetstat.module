@@ -288,15 +288,18 @@ function _ppgetstat_cron_processItem_stats_jobs() {
       return;
     }
     if (!empty($generate_urls_function)) {
-      foreach ($generate_urls_function($item->data) as $url) {
-        // We keep the id of the stats_jobs queue to group all dorg_scrapping jobs.
-        $scrapping_job = array(
-          'id' => $item->item_id,
-          'url' => $url,
-          'data' => $item->data,
-          'parse_pages_callback' => $item->data['parse_pages_callback'],
-        );
-        $dorg_scrapping_queue->createItem($scrapping_job);
+      $data = $generate_urls_function($item->data);
+      if (!empty($data)) {
+        foreach ($generate_urls_function($item->data) as $url) {
+          // We keep the id of the stats_jobs queue to group all dorg_scrapping jobs.
+          $scrapping_job = array(
+            'id' => $item->item_id,
+            'url' => $url,
+            'data' => $item->data,
+            'parse_pages_callback' => $item->data['parse_pages_callback'],
+          );
+          $dorg_scrapping_queue->createItem($scrapping_job);
+        }
       }
     }
 
