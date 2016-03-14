@@ -14,6 +14,13 @@ function pp_frontpage_global_countries_members_content_type_render($subtype, $co
   $block = new stdClass();
   $block->module = 'pp_frontpage';
   $block->title = t('Global statistics: community size');
+  // Try to get info from cache first.
+  $cache = cache_get(__FUNCTION__);
+  if (!empty($cache)) {
+    $block->content = $cache->data;
+    return $block;
+  }
+
   //Getting data of count of individual members.
   $members_stat = _ppgetstat_get_individual_members();
 
@@ -79,12 +86,20 @@ function pp_frontpage_global_countries_members_content_type_render($subtype, $co
     );
   }
 
-
-  $block->content = array(
+  $render_array = array(
     '#theme' => 'table',
     '#header' => array(t('Country'), t('Total users'), t('Active commiters'), t('Individual members')),
     '#rows' => $rows
   );
+
+  cache_set(
+    __FUNCTION__,
+    $render_array,
+    'cache',
+    CACHE_TEMPORARY
+  );
+
+  $block->content = $render_array;
 
   return $block;
 }
