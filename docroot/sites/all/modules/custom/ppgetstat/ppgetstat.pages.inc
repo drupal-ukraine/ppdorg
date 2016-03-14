@@ -213,7 +213,6 @@ function ppgetstat_sync_user_list($form, $form_state) {
  * Submit callback for sync user list form
  */
 function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
-  _ppgetstat_cron_create_users_queue(TRUE);
 
   if (!empty($form_state['values']['direct_user'])) {
     $user_data = ppgetstat_get_dorg_user($form_state['values']['direct_user']);
@@ -231,35 +230,7 @@ function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
   }
   elseif (!empty($form_state['values']['users_list'])) {
     $term = taxonomy_term_load($form_state['values']['users_list']);
-    $field_query = field_get_items('taxonomy_term', $term, 'field_query');
-    $variables = array('limit' => 50);
-    if (FALSE !== $field_query) {
-      foreach ($field_query as $item) {
-        $variables[$item['first']] = $item['second'];
-      }
-    }
-    $r = _ppgetstat_api_call('https://www.drupal.org/', 'api-d7/user.json', $variables);
-    if (!empty($r->last)) {
-      $last_url = parse_url($r->last);
-      parse_str($last_url['query'], $params);
-      for ($i = $params['page'] - 1; $i >= 0; $i--) {
-        $operations[] = array('_ppgetstat_sync_user_list_step', array($variables, $i));
-      }
-      if (isset($operations)) {
-        /*batch_set(array(
-          'title' => t('Processing import...'),
-          'finished' => '_ppgetstat_batch_finished',
-          'operations' => $operations,
-          'init_message' => t('Batch is starting.'),
-        ));*/
-      }
-      else {
-        drupal_set_message(t('Nothing to process.'), 'warning');
-      }
-    }
-    else {
-      drupal_set_message(t('Error with getting initial data.'), 'error');
-    }
+    _ppgetstat_cron_create_users_queue(TRUE, $term);
   }
   else {
     drupal_set_message(t('You are not selected any import criteria.'), 'warning');

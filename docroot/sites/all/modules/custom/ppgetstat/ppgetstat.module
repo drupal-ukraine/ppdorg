@@ -54,7 +54,7 @@ function ppgetstat_menu() {
   );
 
   $items['admin/config/services/sync_user_list'] = array(
-    'title' => 'Get users from Drupal.org',
+    'title' => 'Start sync task from Drupal.org',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('ppgetstat_sync_user_list'),
     'access arguments' => array('administer site configuration'),
@@ -146,25 +146,29 @@ function ppgetstat_cron() {
 /**
  * If period has passed, start rescan of available users list.
  */
-function _ppgetstat_cron_create_users_queue($force = FALSE) {
+function _ppgetstat_cron_create_users_queue($force = FALSE, $scan_term = NULL) {
 
   $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp');
   // we are running users lists rescan each 2 days.
-  if (($last_cron_run > REQUEST_TIME - 2*24*60*60) || (!$force)) {
+  if (($last_cron_run < (REQUEST_TIME - 2*24*60*60)) || (!$force)) {
     return;
   }
 
   $queue = DrupalQueue::get('ppgetstat_users_scan');
   $queue->createQueue();
-  $vocab = taxonomy_vocabulary_machine_name_load('users_list');
-  $terms = taxonomy_get_tree($vocab->vid);
+  if (empty($scan_term)) {
+    $vocab = taxonomy_vocabulary_machine_name_load('users_list');
+    $terms = taxonomy_get_tree($vocab->vid);
+  } else {
+    $terms = array($scan_term);
+  }
   foreach ($terms as $t) {
     $term = taxonomy_term_load($t->tid);
     $field_query = field_get_items('taxonomy_term', $term, 'field_query');
     if (!empty($field_query)) {
       $variables = array();
       foreach ($field_query as $item) {
-        $variables[$item['first']] = $item['second'];
+        $variables[$item['first']] = urlencode($item['second']);
       }
       $r = _ppgetstat_api_call('https://www.drupal.org/','api-d7/user.json', $variables);
       $last_url = parse_url($r->last);
