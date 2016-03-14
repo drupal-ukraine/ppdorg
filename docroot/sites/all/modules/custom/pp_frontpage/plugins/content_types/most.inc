@@ -23,7 +23,6 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
 
   if (isset($context) && isset($context->data) && isset($context->data->tid)) {
     // Localising of user group display to.
-    $user_lists_object = $context->data;
     $user_lists_tid = $context->data->tid;
 
     $block = new stdClass();
@@ -31,7 +30,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
     $block->title = t('Most active users');
     $output = '';
 
-    $cache = cache_get(__FUNCTION__);
+    $cache = cache_get(__FUNCTION__ . ':' . $user_lists_tid);
     if (!empty($cache)) {
       $block->content = $cache->data;
       return $block;
