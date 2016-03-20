@@ -13,7 +13,7 @@ function pp_frontpage_global_countries_members_content_type_render($subtype, $co
 
   $block = new stdClass();
   $block->module = 'pp_frontpage';
-  $block->title = t('Global statistics: community size');
+  $block->title = t('Countries under our investigation.');
   // Try to get info from cache first.
   $cache = cache_get(__FUNCTION__);
   if (!empty($cache)) {

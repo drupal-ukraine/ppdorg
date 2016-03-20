@@ -6,6 +6,18 @@
  */
 
 /**
+ * Implements hook_theme().
+ */
+/*function pp_frontpage_theme() {
+  return array(
+    'about_block' => array(
+      'render element' => 'data',
+      'template' => 'plugins/templates/about_block'
+    ),
+  );
+}*/
+
+/**
  * Implements hook_ctools_plugin_directory().
  */
 function pp_frontpage_ctools_plugin_directory($owner, $plugin_type) {
