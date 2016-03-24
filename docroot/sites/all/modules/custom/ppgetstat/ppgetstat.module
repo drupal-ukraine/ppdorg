@@ -8,15 +8,15 @@ define('PPGETSTAT_USER_NODE_TYPE', 'user');
 // Number of users queued to be scanned per cron run.
 define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 100);
 // Number of calls to drupal.org per cron run.
-define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 800);
-// If no stats available we scan commits for last half a year.
+define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 400);
+// If no stats available we scan commits for last 12 years.
 define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 12 * 12 * 30 * 24 * 60 * 60));
 // We group statistics per week.
 define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 // Commmits type of data.
 define('PPGETSTAT_TYPE_COMMITS', 1);
 // Page cache expiry time.
-define('PPGETSTAT_PAGE_CACHE_EXPIRY', 6 * 60 * 60);
+define('PPGETSTAT_PAGE_CACHE_EXPIRY', 4 * 60 * 60);
 
 /**
  * Implements hook_menu().
@@ -119,23 +119,24 @@ function ppgetstat_get_nick_by_id($id) {
  */
 function ppgetstat_cron() {
   $time_pre = microtime(TRUE);
-  // Create items in stats_jobs queue.
-  _ppgetstat_cron_createItem_stats_jobs();
-
-  // Process items from stats_jobs queue.
-  _ppgetstat_cron_processItem_stats_jobs();
-
-  // Process items from stats_jobs queue.
-  _ppgetstat_cron_processItem_dorg_scrapping_jobs();
-
-  // Remove expired cached pages.
-  _ppgetstat_cron_remove_cached_pages();
 
   //Start users sync process with d.org
   _ppgetstat_cron_create_users_queue();
 
   //Process step of sync process.
   _ppgetstat_cron_process_users_queue();
+
+  // Create items in stats_jobs queue.
+  //_ppgetstat_cron_createItem_stats_jobs();
+
+  // Process items from stats_jobs queue.
+  //_ppgetstat_cron_processItem_stats_jobs();
+
+  // Process items from stats_jobs queue.
+  //_ppgetstat_cron_processItem_dorg_scrapping_jobs();
+
+  // Remove expired cached pages.
+  _ppgetstat_cron_remove_cached_pages();
 
   $time_post = microtime(TRUE);
   $exec_time = round($time_post - $time_pre, 2);
@@ -148,9 +149,9 @@ function ppgetstat_cron() {
  */
 function _ppgetstat_cron_create_users_queue($force = FALSE, $scan_term = NULL) {
 
-  $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp');
-  // we are running users lists rescan each 2 days.
-  if (($last_cron_run < (REQUEST_TIME - 2*24*60*60)) || (!$force)) {
+  $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp', 0);
+  // we are running users lists rescan each 12 days.
+  if ((12*24*60*60 >= (REQUEST_TIME - $last_cron_run)) && (!$force)) {
     return;
   }
 
@@ -215,8 +216,10 @@ function _ppgetstat_cron_process_users_queue() {
  */
 function _ppgetstat_cron_createItem_stats_jobs() {
   $last_cron_run = variable_get('ppgetstat_last_statsjobs_timestamp');
-
-  if ($last_cron_run > REQUEST_TIME - 24 * 60 * 60) {
+  // We are rescaning ech user commit every 5 days.
+  // @TODO make this feature configurable at the admin panel.
+  if ($last_cron_run > REQUEST_TIME - 5 * 24 * 60 * 60) {
+    watchdog('ppgetstat_info', 'Skiping create_item_stats_job because it is to early');
     return;
   }
 

@@ -79,7 +79,7 @@ function pp_frontpage_global_countries_members_content_type_render($subtype, $co
 
   foreach ($global_total as $tid => $count) {
     $rows[] = array(
-      $terms_data[$tid]->name,
+      l($terms_data[$tid]->name,'taxonomy/term/' . $tid),
       $count,
       $active_commits[$tid],
       $terms_data[$tid]->individuals_count
