@@ -172,5 +172,77 @@ function ukraine_users_feature_uuid_features_default_terms() {
     'field_request_query' => array(),
   );
 
+  $terms[] = array(
+    'name' => 'Austria',
+    'description' => '',
+    'format' => 'plain_text',
+    'weight' => 0,
+    'uuid' => 'ff765dcd-72b8-4e75-b9fd-f8ad3d7fabb4',
+    'vocabulary_machine_name' => 'users_list',
+    'field_query' => array(
+      'und' => array(
+        0 => array(
+          'first' => 'field_country',
+          'second' => 'Austria',
+        ),
+      ),
+    ),
+    'field_request_query' => array(),
+  );
+
+  $terms[] = array(
+    'name' => 'Bulgaria',
+    'description' => '',
+    'format' => 'plain_text',
+    'weight' => 0,
+    'uuid' => '27d5490b-6846-4adb-8556-918313f2b68a',
+    'vocabulary_machine_name' => 'users_list',
+    'field_query' => array(
+      'und' => array(
+        0 => array(
+          'first' => 'field_country',
+          'second' => 'Bulgaria',
+        ),
+      ),
+    ),
+    'field_request_query' => array(),
+  );
+
+  $terms[] = array(
+    'name' => 'Czech Republic',
+    'description' => '',
+    'format' => 'plain_text',
+    'weight' => 0,
+    'uuid' => '5ad1792e-a1e4-4e3f-9671-d35765cb44ff',
+    'vocabulary_machine_name' => 'users_list',
+    'field_query' => array(
+      'und' => array(
+        0 => array(
+          'first' => 'field_country',
+          'second' => 'Czech Republic',
+        ),
+      ),
+    ),
+    'field_request_query' => array(),
+  );
+
+  $terms[] = array(
+    'name' => 'Latvia',
+    'description' => '',
+    'format' => 'plain_text',
+    'weight' => 0,
+    'uuid' => 'da89645a-ff36-4983-bbf8-848b8ed52868',
+    'vocabulary_machine_name' => 'users_list',
+    'field_query' => array(
+      'und' => array(
+        0 => array(
+          'first' => 'field_country',
+          'second' => 'Latvia',
+        ),
+      ),
+    ),
+    'field_request_query' => array(),
+  );
+
   return $terms;
 }
