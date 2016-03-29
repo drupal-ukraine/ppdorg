@@ -8,7 +8,7 @@ define('PPGETSTAT_USER_NODE_TYPE', 'user');
 // Number of users queued to be scanned per cron run.
 define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 100);
 // Number of calls to drupal.org per cron run.
-define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 400);
+define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 270);
 // If no stats available we scan commits for last 12 years.
 define('PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING', variable_get('ppgetstat_stats_period', 12 * 12 * 30 * 24 * 60 * 60));
 // We group statistics per week.
@@ -17,6 +17,8 @@ define('PPGETSTAT_TIME_PERIOD_GRANULARITY', 7 * 24 * 60 * 60);
 define('PPGETSTAT_TYPE_COMMITS', 1);
 // Page cache expiry time.
 define('PPGETSTAT_PAGE_CACHE_EXPIRY', 4 * 60 * 60);
+// Quantification of the statjob queue tasks
+define('PPGETSTAT_STAT_JOB_QUANTIFICATION', 20);
 
 /**
  * Implements hook_menu().
@@ -121,20 +123,23 @@ function ppgetstat_cron() {
   $time_pre = microtime(TRUE);
 
   //Start users sync process with d.org
-  _ppgetstat_cron_create_users_queue();
+  $cron_create_users_queue = _ppgetstat_cron_create_users_queue();
 
   //Process step of sync process.
-  _ppgetstat_cron_process_users_queue();
+  $cron_process_user_queue = _ppgetstat_cron_process_users_queue();
 
   // Create items in stats_jobs queue.
-  //_ppgetstat_cron_createItem_stats_jobs();
+  if (!$cron_create_users_queue && !$cron_process_user_queue) {
+    $cron_create_stats_jobs = _ppgetstat_cron_createItem_stats_jobs();
+    // If new scan jobs are not created, we could run process jobs.
+    if (!$cron_create_stats_jobs) {
+    // Process items from stats_jobs queue.
+    _ppgetstat_cron_processItem_stats_jobs();
 
-  // Process items from stats_jobs queue.
-  //_ppgetstat_cron_processItem_stats_jobs();
-
-  // Process items from stats_jobs queue.
-  //_ppgetstat_cron_processItem_dorg_scrapping_jobs();
-
+    // Process items from stats_jobs queue.
+    _ppgetstat_cron_processItem_dorg_scrapping_jobs();
+    }
+  }
   // Remove expired cached pages.
   _ppgetstat_cron_remove_cached_pages();
 
@@ -152,7 +157,7 @@ function _ppgetstat_cron_create_users_queue($force = FALSE, $scan_term = NULL) {
   $last_cron_run = variable_get('ppgetstat_last_users_rescan_timestamp', 0);
   // we are running users lists rescan each 12 days.
   if ((12*24*60*60 >= (REQUEST_TIME - $last_cron_run)) && (!$force)) {
-    return;
+    return 0;
   }
 
   $queue = DrupalQueue::get('ppgetstat_users_scan');
@@ -182,6 +187,7 @@ function _ppgetstat_cron_create_users_queue($force = FALSE, $scan_term = NULL) {
     }
   }
   variable_set('ppgetstat_last_users_rescan_timestamp', REQUEST_TIME);
+  return 1;
 }
 
 /**
@@ -190,8 +196,8 @@ function _ppgetstat_cron_create_users_queue($force = FALSE, $scan_term = NULL) {
 function _ppgetstat_cron_process_users_queue() {
   $last_cron_run = variable_get('ppgetstat_last_users_process_timestamp');
   // we are running users lists rescan each 5 minutes.
-  if ($last_cron_run > REQUEST_TIME - 5 * 60) {
-    return;
+  if ($last_cron_run > REQUEST_TIME - 4 * 60) {
+    return 0;
   }
 
   $queue = DrupalQueue::get('ppgetstat_users_scan');
@@ -204,11 +210,14 @@ function _ppgetstat_cron_process_users_queue() {
       _ppgetstat_sync_user_list_step($variables, $page, $tid);
       $queue->deleteItem($item);
     }
+    return 1;
   } else {
     $queue->DeleteQueue();
+    return 0;
   }
 
   variable_set('ppgetstat_last_users_process_timestamp', REQUEST_TIME);
+
 }
 
 /**
@@ -218,57 +227,73 @@ function _ppgetstat_cron_createItem_stats_jobs() {
   $last_cron_run = variable_get('ppgetstat_last_statsjobs_timestamp');
   // We are rescaning ech user commit every 5 days.
   // @TODO make this feature configurable at the admin panel.
+  // @TODO add ability to force this and run rescan from admin panel.
   if ($last_cron_run > REQUEST_TIME - 5 * 24 * 60 * 60) {
     watchdog('ppgetstat_info', 'Skiping create_item_stats_job because it is to early');
-    return;
+    return 0;
   }
 
   $queue = DrupalQueue::get('stats_jobs');
-  foreach (_ppgetstats_get_all_users() as $user_node) {
-    if (!isset($user_node->field_user_id[LANGUAGE_NONE][0]['value'])) {
-      continue;
-    }
+  $scan_users = array();
+  foreach (_ppgetstats_get_all_users() as $nid => $doid) {
+    $scan_users[] = array(
+      'nid' => $nid,
+      'doid' => $doid,
+    );
+  }
 
+  $quant = array_chunk($scan_users, PPGETSTAT_STAT_JOB_QUANTIFICATION);
+  foreach ($quant as $items) {
     // Invoke hook so all modules can use it to provide jobs.
     foreach (module_implements('ppgetstat_stats_job') as $module) {
-      $job = module_invoke($module, 'ppgetstat_stats_job', $user_node);
-      if (!empty($job)) {
-        $queue->createItem($job);
+      $jobs = module_invoke($module, 'ppgetstat_stats_job', $items);
+      if (!empty($jobs)) {
+        foreach ($jobs as $job) {
+          $queue->createItem($job);
+        }
       }
     }
   }
 
   variable_set('ppgetstat_last_statsjobs_timestamp', REQUEST_TIME);
+
+  return 1;
 }
 
 /**
  * Implements hook_ppgetstat_stats_job().
  */
-function ppgetstat_ppgetstat_stats_job($user_node) {
-  $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
-  $last_scan_week = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
-    array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMITS)
-  )->fetchField();
+function ppgetstat_ppgetstat_stats_job($users) {
 
-  $last_commit_timestamp = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array($doid => array()));
+  $job = array();
 
-  $last_commit_timestamp[$doid] = array($last_scan_week => 0);
+  foreach ($users as $user) {
+    $doid = $user['doid'];
+    $last_scan_week = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+      array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMITS)
+    )->fetchField();
 
-  $last_scan = max(array(
-    REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
-    $last_commit_timestamp[$doid][$last_scan_week],
-  ));
+    $last_commit_timestamp = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array($doid => array()));
+    $last_commit_timestamp[$doid] = array($last_scan_week => 0);
+    //@TODO Rim this, because filtering is already exist at _ppgetstat_cron_createItem_stats_jobs().
+    $last_scan = max(array(
+      REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
+      $last_commit_timestamp[$doid][$last_scan_week],
+    ));
 
-  if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
-    return;
+    if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
+      return;
+    }
+
+    $job[] = array(
+      'generate_urls_callback' => '_ppgetstat_get_code_tracking_urls',
+      'parse_pages_callback' => '_ppgetstat_parse_commits',
+      'doid' => $doid,
+      'last_scan' => $last_scan,
+    );
+
   }
 
-  $job = array(
-    'generate_urls_callback' => '_ppgetstat_get_code_tracking_urls',
-    'parse_pages_callback' => '_ppgetstat_parse_commits',
-    'doid' => $doid,
-    'last_scan' => $last_scan,
-  );
   return $job;
 }
 
@@ -289,7 +314,7 @@ function _ppgetstat_cron_processItem_stats_jobs() {
 
     $generate_urls_function = $item->data['generate_urls_callback'];
     if (!function_exists($generate_urls_function)) {
-      watchdog('ppgetstat', 'generate_urls_callback ":generate_urls_callback" is not defined.', array(
+      watchdog('ppgetstat_error', 'generate_urls_callback ":generate_urls_callback" is not defined.', array(
         ':generate_urls_callback' => $generate_urls_function,
       ), WATCHDOG_ERROR);
       return;
@@ -324,11 +349,21 @@ function _ppgetstats_get_all_users() {
     ->entityCondition('bundle', PPGETSTAT_USER_NODE_TYPE)
     ->propertyCondition('status', 1)
     ->execute();
+  $query = db_select('node', 'n');
+  $query->innerJoin('field_data_field_user_id', 'fu', 'n.nid=fu.entity_id');
+  $query->fields('n', array('nid'));
+  $query->fields('fu', array('field_user_id_value'));
+  $result = $query->execute()->fetchAll();
   if (!empty($result)) {
-    $nids = array_keys($result['node']);
-    return node_load_multiple($nids);
+    $return = array();
+    foreach ($result as $item) {
+      $return[$item->nid] = $item->field_user_id_value;
+    }
+    return $return;
+  } else {
+    return array();
   }
-  return array();
+
 }
 
 /**
@@ -392,30 +427,31 @@ function _ppgetstat_get_node_link_by_doid($doid) {
  */
 function _ppgetstat_get_code_tracking_urls($data) {
   $last_scan = $data['last_scan'];
-  $doid = $data['doid'];
+  $doids = $data['doids'];
   // Number of pages to scan before check it is empty.
   $pages_block = 7;
   $urls = array();
-
-  $first_url = 'https://drupal.org/user/' . urlencode($doid) . '/track/code?page=0';
-  $content = _ppgetstat_fetch_page($first_url);
-  $start = 0;
+  //@TODO after quantification
+  foreach ($doids as $doid) {
+    $first_url = 'https://drupal.org/user/' . urlencode($doid) . '/track/code?page=0';
+    $content = _ppgetstat_fetch_page($first_url);
+    $start = 0;
     if (strpos($content, 'commitlog')) {
-    for ($i = $start; $i <= ($start + $pages_block); $i++) {
-      if ($i == ($start + $pages_block)) {
-        $first_url = 'https://drupal.org/user/' . urlencode($doid) . '/track/code?page=' . $i;
-        $content = _ppgetstat_fetch_page($first_url);
-        if (!strpos($content, 'commitlog')) {
-          return $urls;
+      for ($i = $start; $i <= ($start + $pages_block); $i++) {
+        if ($i == ($start + $pages_block)) {
+          $first_url = 'https://drupal.org/user/' . urlencode($doid) . '/track/code?page=' . $i;
+          $content = _ppgetstat_fetch_page($first_url);
+          if (!strpos($content, 'commitlog')) {
+            return $urls;
+          }
+          else {
+            $start = $start + $pages_block;
+          }
         }
-        else {
-          $start = $start + $pages_block;
-        }
+        $urls[] = 'https://drupal.org/user/' . urlencode($doid) . '/track/code?page=' . $i;
       }
-      $urls[] = 'https://drupal.org/user/' . urlencode($doid) . '/track/code?page=' . $i;
     }
   }
-
   return $urls;
 }
 
@@ -444,7 +480,7 @@ function _ppgetstat_cron_processItem_dorg_scrapping_jobs() {
       $result = $function($page_content, $queue_item->data['data']);
     }
     catch (Exception $e) {
-      watchdog_exception('ppgetstat', $e);
+      watchdog_exception('ppgetstat_error', $e);
       $result = FALSE;
     }
 
