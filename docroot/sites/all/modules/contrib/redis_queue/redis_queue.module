@@ -1,0 +1,9 @@
+<?php
+
+/**
+ * Implements hook_cron().
+ */
+function redis_cron() {
+  $q = new RedisQueue("");
+  $q->expireAll();
+}
