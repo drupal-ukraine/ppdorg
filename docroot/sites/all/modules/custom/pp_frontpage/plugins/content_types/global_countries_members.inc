@@ -48,30 +48,20 @@ function pp_frontpage_global_countries_members_content_type_render($subtype, $co
 
 
   // Getting active by commits statistics
-  $active_by_commits_query = db_select('field_data_field_user_lists', 'fu');
-  $active_by_commits_query->innerJoin(
-    'field_data_field_user_id',
-    'fn',
-    'fu.entity_id = fn.entity_id'
-  );
-  $active_by_commits_query->innerJoin(
-    'ppgetstat',
-    'pp',
-    'pp.doid = fn.field_user_id_value'
-  );
+  $active_by_commits_query = db_select('ppgetstat', 'pp');
   $active_by_commits_query->condition('pp.type', PPGETSTAT_TYPE_COMMITS);
-  $active_by_commits_query->fields('fu',array('field_user_lists_tid'));
+  $active_by_commits_query->fields('pp',array('user_group_tid'));
   $active_by_commits_query->addExpression('COUNT(pp.doid)', 'ac');
 
-  $active_by_commits_query->groupBy('fu.field_user_lists_tid');
+  $active_by_commits_query->groupBy('pp.user_group_tid');
   $active_by_commits_query->groupBy('pp.doid');
   $active_by_commits = $active_by_commits_query->execute()->fetchAll();
   $active_commits = array();
   foreach ($active_by_commits as $temp) {
-    if (!empty($active_commits[$temp->field_user_lists_tid])) {
-      $active_commits[$temp->field_user_lists_tid]++;
+    if (!empty($active_commits[$temp->user_group_tid])) {
+      $active_commits[$temp->user_group_tid]++;
     } else {
-      $active_commits[$temp->field_user_lists_tid] = 1;
+      $active_commits[$temp->user_group_tid] = 1;
     }
   }
 

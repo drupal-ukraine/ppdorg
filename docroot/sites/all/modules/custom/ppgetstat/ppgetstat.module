@@ -65,6 +65,16 @@ function ppgetstat_menu() {
     'file' => 'ppgetstat.pages.inc',
   );
 
+  $items['admin/config/services/restart_country_scan'] = array(
+    'title' => 'Restart country scan',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ppgetstat_rescan'),
+    'access arguments' => array('administer site configuration'),
+    'weight' => -21,
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'ppgetstat.pages.inc',
+  );
+
   return $items;
 }
 
@@ -263,7 +273,7 @@ function _ppgetstat_cron_createItem_stats_jobs() {
 /**
  * Implements hook_ppgetstat_stats_job().
  */
-function ppgetstat_ppgetstat_stats_job($users) {
+function ppgetstat_ppgetstat_stats_job(array $users, $force = FALSE) {
 
   $job = array();
 
@@ -281,10 +291,11 @@ function ppgetstat_ppgetstat_stats_job($users) {
       $last_commit_timestamp[$doid][$last_scan_week],
     ));
 
-    if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
-      return;
+    if (!$force) {
+      if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
+        return;
+      }
     }
-
     $job[] = array(
       'generate_urls_callback' => '_ppgetstat_get_code_tracking_urls',
       'parse_pages_callback' => '_ppgetstat_parse_commits',
@@ -427,7 +438,9 @@ function _ppgetstat_get_node_link_by_doid($doid) {
  */
 function _ppgetstat_get_code_tracking_urls($data) {
   $last_scan = $data['last_scan'];
-  $doids = $data['doids'];
+
+  $doids = array($data['doid']);
+
   // Number of pages to scan before check it is empty.
   $pages_block = 7;
   $urls = array();
@@ -630,12 +643,22 @@ function _ppgetstat_parse_commits($page_content, $data) {
 function _ppgetstat_save_counters($counters_array, $doid) {
   $type = $counters_array['#type'];
   unset($counters_array['#type']);
+  $query = db_select('field_data_field_user_id', 'fdoid');
+  $query->innerJoin('field_data_field_user_lists', 'fl', 'fdoid.entity_id = fl.entity_id');
+  $query->condition('fdoid.field_user_id_value', $doid);
+  $query->fields('fl', array('field_user_lists_tid'));
+  $user_group_tid = $query->execute()->fetchField();
 
   foreach ($counters_array as $period => &$commits) {
     foreach ($commits as &$hash) {
       db_merge('ppgetstat')
         ->key(array('doid' => $doid, 'hash' => $hash))
-        ->fields(array('type' => $type, 'timestamp' => $period, 'items' => 1))
+        ->fields(array(
+          'type' => $type,
+          'timestamp' => $period,
+          'items' => 1,
+          'user_group_tid' => $user_group_tid
+        ))
         ->execute();
     }
 
