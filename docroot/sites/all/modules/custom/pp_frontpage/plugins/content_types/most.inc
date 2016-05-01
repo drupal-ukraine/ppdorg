@@ -41,8 +41,7 @@ function pp_frontpage_most_content_type_render($subtype, $conf, $panel_args, $co
       ) . '</div>';
     $query = 'SELECT pp.doid, SUM(pp.items) as counter  FROM {ppgetstat} pp '
       . 'INNER JOIN field_data_field_user_id fn ON fn.field_user_id_value = pp.doid '
-      . 'INNER JOIN field_data_field_user_lists fu ON fu.entity_id = fn.entity_id '
-      . 'WHERE pp.type = :type AND pp.timestamp > :timestamp AND fu.field_user_lists_tid = :user_list_tid '
+      . 'WHERE pp.type = :type AND pp.timestamp > :timestamp AND pp.user_group_tid = :user_list_tid '
       . 'GROUP BY pp.doid ORDER BY counter DESC LIMIT 0,200';
 
     $last_thee_months = REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING;
