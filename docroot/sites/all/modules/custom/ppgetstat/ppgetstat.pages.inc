@@ -176,10 +176,7 @@ function ppgetstat_reset_form_submit($form, $form_state) {
   }
 }
 
-/**
- * Form builder for reset stats form.
- */
-function ppgetstat_sync_user_list($form, $form_state) {
+function _ppgetstat_list_form_element() {
   // Getting list of all available users list for analyzing.
   $user_lists_vocab = taxonomy_vocabulary_machine_name_load('users_list');
   $terms = taxonomy_get_tree($user_lists_vocab->vid);
@@ -189,11 +186,20 @@ function ppgetstat_sync_user_list($form, $form_state) {
   foreach ($terms as $term) {
     $options[$term->tid] = $term->name;
   }
-  $form['users_list'] = array(
+
+  return array(
     '#type' => 'select',
-    '#title' => t('Select users group scan to'),
+    '#title' => t('Select users group'),
     '#options' => $options,
   );
+}
+
+/**
+ * Form builder for reset stats form.
+ */
+function ppgetstat_sync_user_list($form, $form_state) {
+
+  $form['users_list'] = _ppgetstat_list_form_element();
 
   $form['direct_user'] = array(
     '#type' => 'textfield',
@@ -235,4 +241,50 @@ function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
   else {
     drupal_set_message(t('You are not selected any import criteria.'), 'warning');
   }
+}
+
+function ppgetstat_rescan(array $form, array $form_state) {
+  $form['users_list'] = _ppgetstat_list_form_element();
+  $count = db_select('ppgetstat', 'p')->countQuery()->execute()->fetchCol();
+  dpm($count);
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('test request')
+  );
+
+  return $form;
+}
+
+function ppgetstat_rescan_submit(array $form, array &$form_state) {
+  $user_list_tid = $form_state['values']['users_list'];
+  $queue = DrupalQueue::get('stats_jobs');
+  $scan_users = array();
+  $query = db_select('field_data_field_user_id', 'fdoid');
+  $query->innerJoin('field_data_field_user_lists', 'fl', 'fdoid.entity_id = fl.entity_id');
+  $query->condition('fl.field_user_lists_tid', $user_list_tid);
+  $query->innerJoin('node', 'n', 'n.nid = fdoid.entity_id');
+  $query->fields('n', array('title'));
+  $query->fields('fdoid', array('entity_id', 'field_user_id_value'));
+  $result = $query->execute()->fetchAll();
+  foreach ($result as $item) {
+    $scan_users[] = array(
+      'nid' => $item->entity_id,
+      'doid' => $item->field_user_id_value,
+      'do_nickname' => $item->title,
+    );
+  }
+
+  $quant = array_chunk($scan_users, PPGETSTAT_STAT_JOB_QUANTIFICATION);
+  foreach ($quant as $items) {
+    // Invoke hook so all modules can use it to provide jobs.
+    foreach (module_implements('ppgetstat_stats_job') as $module) {
+      $jobs = module_invoke($module, 'ppgetstat_stats_job', $items, TRUE);
+      if (!empty($jobs)) {
+        foreach ($jobs as $job) {
+          $queue->createItem($job);
+        }
+      }
+    }
+  }
+
 }
