@@ -11,33 +11,38 @@ define('PPGETSTAT_TYPE_COMMENTS', 3);
 /**
  * Implements hook_ppgetstat_stats_job().
  */
-function ppcmnt_ppgetstat_stats_job($user_node) {
-  $doid = $user_node->field_user_id[LANGUAGE_NONE][0]['value'];
+function ppcmnt_ppgetstat_stats_job(array $users, $force = FALSE) {
+  foreach ($users as $user) {
+    $doid = $user['doid'];
 
-  $last_scan_week = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
-    array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMENTS)
-  )->fetchField();
+    $last_scan_week = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+      array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMENTS)
+    )->fetchField();
 
-  $last_comment_timestamp = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array($doid => array()));
+    $last_comment_timestamp = variable_get('ppgetstat_ppcmnt_last_comment_timestamp', array($doid => array()));
 
-  $last_comment_timestamp[$doid] = array($last_scan_week => 0);
+    $last_comment_timestamp[$doid] = array($last_scan_week => 0);
 
-  $last_scan = max(array(
-    REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
-    $last_comment_timestamp[$doid][$last_scan_week],
-  ));
+    $last_scan = max(array(
+      REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
+      $last_comment_timestamp[$doid][$last_scan_week],
+    ));
 
-  if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
-    return;
+    if (!$force) {
+      if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
+        return;
+      }
+    }
+
+
+    $job[] = array(
+      'generate_urls_callback' => '_ppcmnt_get_comments_tracking_urls',
+      'parse_pages_callback' => '_ppcmnt_parse_post_page',
+      'doid' => $doid,
+      'do_nickname' => $user['do_nickname'],
+      'last_scan' => $last_scan,
+    );
   }
-
-  $job = array(
-    'generate_urls_callback' => '_ppcmnt_get_comments_tracking_urls',
-    'parse_pages_callback' => '_ppcmnt_parse_post_page',
-    'doid' => $doid,
-    'do_nickname' => $user_node->title,
-    'last_scan' => $last_scan,
-  );
   return $job;
 }
 
