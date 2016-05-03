@@ -246,7 +246,6 @@ function ppgetstat_sync_user_list_submit(array $form, array &$form_state) {
 function ppgetstat_rescan(array $form, array $form_state) {
   $form['users_list'] = _ppgetstat_list_form_element();
   $count = db_select('ppgetstat', 'p')->countQuery()->execute()->fetchCol();
-  dpm($count);
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('test request')
