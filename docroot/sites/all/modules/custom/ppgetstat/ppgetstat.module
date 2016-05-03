@@ -822,6 +822,39 @@ function _ppgetstat_sync_user_list_step($variables, $page, $tid) {
 }
 
 /**
+ * Helper function that is checking - is existed user changed or not.
+ * We are using this function for next purposes:
+ * - avoid hard node_save action without any new information;
+ * - write new revision for understanding differenced between user data now and
+ * in the past.
+ * @param $old
+ * @param $new
+ * @param $params_to_scan
+ */
+function _ppgetstat_node_diff($old, $new, $params_to_scan) {
+  if (!empty($params_to_scan)) {
+    foreach ($params_to_scan as $param) {
+      if (empty($old->{$param}) || empty($new->{$param})) {
+        return TRUE;
+      }
+      $old_value = $old->{$param};
+      $new_value = $new->{$param};
+      if (is_array($old_value) && (is_array($new_value))) {
+        if ((string)$old_value != (string)$new_value) {
+          return TRUE;
+        }
+      } else {
+        if ($old_value != $new_value) {
+          return TRUE;
+        }
+      }
+    }
+  } else {
+    // If we dont have plan to compare - thinking that new node has new info.
+    return TRUE;
+  }
+}
+/**
  * Helper function that process d.org users list and add/update that object to
  * user nodes.
  * @param $users_data
@@ -846,7 +879,7 @@ function _ppgetstat_process_dorg_users($users_data, $doids, $tid) {
       $node->type = 'user';
       node_object_prepare($node);
     } else {
-      $node = node_load($existed_users[$uid]);
+     $old_node =  $node = node_load($existed_users[$uid]);
     }
 
     $node->title = $users_data[$uid]->name;
@@ -890,7 +923,24 @@ function _ppgetstat_process_dorg_users($users_data, $doids, $tid) {
       }
     }
 
-    node_save($node);
+    if ($node->nid) {
+      if (_ppgetstat_node_diff($old_node, $node,
+        array(
+          'field_job_titles',
+          'field_organisations',
+          'field_mentors',
+          'title'
+        )
+      )) {
+        // Uf user has updated something at profile - adding new revision.
+        $node->revision = 1;
+        $node->log = 'User rescan: ' . date('Y-m-d H:i');
+        node_save($node);
+      }
+    } else {
+      node_save($node);
+    }
+
   }
 }
 
