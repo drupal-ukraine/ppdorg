@@ -6,7 +6,7 @@
  */
 define('PPGETSTAT_USER_NODE_TYPE', 'user');
 // Number of users queued to be scanned per cron run.
-define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 100);
+define('PPGETSTAT_STATSJOBS_PROCESS_NUMBER', 250);
 // Number of calls to drupal.org per cron run.
 define('PPGETSTAT_DORGSCRAPPING_PROCESS_NUMBER', 270);
 // If no stats available we scan commits for last 12 years.
@@ -139,7 +139,7 @@ function ppgetstat_cron() {
   $cron_process_user_queue = _ppgetstat_cron_process_users_queue();
 
   // Create items in stats_jobs queue.
-  if (!$cron_create_users_queue && !$cron_process_user_queue) {
+  if (!$cron_create_users_queue || !$cron_process_user_queue) {
     $cron_create_stats_jobs = _ppgetstat_cron_createItem_stats_jobs();
     // If new scan jobs are not created, we could run process jobs.
     if (!$cron_create_stats_jobs) {
@@ -189,7 +189,7 @@ function _ppgetstat_cron_create_users_queue($force = FALSE, $scan_term = NULL) {
       $r = _ppgetstat_api_call('https://www.drupal.org/','api-d7/user.json', $variables);
       $last_url = parse_url($r->last);
       parse_str($last_url['query'], $params);
-      for ($i = $params['page'] - 1; $i >= 0; $i--) {
+      for ($i = $params['page']; $i >= 0; $i--) {
         $queue->createItem(array(
           $variables, $i, $term->tid
         ));
@@ -834,18 +834,20 @@ function _ppgetstat_sync_user_list_step($variables, $page, $tid) {
 function _ppgetstat_node_diff($old, $new, $params_to_scan) {
   if (!empty($params_to_scan)) {
     foreach ($params_to_scan as $param) {
-      if (empty($old->{$param}) || empty($new->{$param})) {
-        return TRUE;
-      }
       $old_value = $old->{$param};
       $new_value = $new->{$param};
       if (is_array($old_value) && (is_array($new_value))) {
-        if ((string)$old_value != (string)$new_value) {
+
+        if (strcmp(serialize($old_value), serialize($new_value)) != 0) {
           return TRUE;
+        } else {
+          return FALSE;
         }
       } else {
         if ($old_value != $new_value) {
           return TRUE;
+        } else {
+          return FALSE;
         }
       }
     }
@@ -935,10 +937,13 @@ function _ppgetstat_process_dorg_users($users_data, $doids, $tid) {
         // Uf user has updated something at profile - adding new revision.
         $node->revision = 1;
         $node->log = 'User rescan: ' . date('Y-m-d H:i');
+        watchdog('dorg_users_import', 'Updating user @user', array('@user'=> l($node->title, 'node/' . $node->nid)));
         node_save($node);
       }
     } else {
       node_save($node);
+      watchdog('dorg_users_import', 'Adding new user @user', array('@user'=> l($node->title, 'node/' . $node->nid)));
+
     }
 
   }
