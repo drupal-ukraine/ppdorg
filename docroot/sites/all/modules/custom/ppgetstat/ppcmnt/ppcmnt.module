@@ -11,7 +11,10 @@ define('PPGETSTAT_TYPE_COMMENTS', 3);
 /**
  * Implements hook_ppgetstat_stats_job().
  */
-function ppcmnt_ppgetstat_stats_job(array $users, $force = FALSE) {
+function ppcmnt_ppgetstat_stats_job($users, $force = FALSE) {
+  if (!is_array($users)) {
+    $users = array($users);
+  }
   foreach ($users as $user) {
     $doid = $user['doid'];
 
