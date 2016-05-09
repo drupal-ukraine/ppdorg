@@ -72,7 +72,7 @@ function pp_frontpage_global_top_contributors_content_type_render($subtype, $con
       $i,
       $flag,
       l($terms_data[$temp->user_group_tid]->name,'taxonomy/term/' . $temp->user_group_tid),
-      $node->title,
+      l($node->title, 'http://drupal.org/user/' . $nid_map[$node->nid]),
       $temp->ac,
       );
     $i++;
