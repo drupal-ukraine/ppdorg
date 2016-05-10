@@ -925,7 +925,7 @@ function _ppgetstat_process_dorg_users($users_data, $doids, $tid) {
       }
     }
 
-    if ($node->nid) {
+    if (!empty($node->nid)) {
       if (_ppgetstat_node_diff($old_node, $node,
         array(
           'field_job_titles',
