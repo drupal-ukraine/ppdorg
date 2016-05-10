@@ -76,7 +76,11 @@ function pp_frontpage_global_top_contributors_content_type_render($subtype, $con
       $temp->ac,
       );
     $i++;
-    $country_group[$term->name]++;
+    if (isset($country_group[$term->name])) {
+      $country_group[$term->name]++;
+    } else {
+      $country_group[$term->name] = 1;
+    }
   }
 
   $render_array = array(
