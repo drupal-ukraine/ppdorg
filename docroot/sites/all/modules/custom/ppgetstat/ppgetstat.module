@@ -140,7 +140,8 @@ function ppgetstat_cron() {
 
   // Create items in stats_jobs queue.
   if (!$cron_create_users_queue || !$cron_process_user_queue) {
-    $cron_create_stats_jobs = _ppgetstat_cron_createItem_stats_jobs();
+    $cron_create_stats_jobs = false;
+    //$cron_create_stats_jobs = _ppgetstat_cron_createItem_stats_jobs();
     // If new scan jobs are not created, we could run process jobs.
     if (!$cron_create_stats_jobs) {
     // Process items from stats_jobs queue.
@@ -245,10 +246,11 @@ function _ppgetstat_cron_createItem_stats_jobs() {
 
   $queue = DrupalQueue::get('stats_jobs');
   $scan_users = array();
-  foreach (_ppgetstats_get_all_users() as $nid => $doid) {
+  foreach (_ppgetstats_get_all_users() as $nid => $temp) {
     $scan_users[] = array(
       'nid' => $nid,
-      'doid' => $doid,
+      'doid' => $temp['doid'],
+      'do_nickname' => $temp['do_nickname'],
     );
   }
 
@@ -354,21 +356,19 @@ function _ppgetstat_cron_processItem_stats_jobs() {
  * Get all published user nodes.
  */
 function _ppgetstats_get_all_users() {
-  $query = new EntityFieldQuery();
-  $result = $query
-    ->entityCondition('entity_type', 'node')
-    ->entityCondition('bundle', PPGETSTAT_USER_NODE_TYPE)
-    ->propertyCondition('status', 1)
-    ->execute();
+
   $query = db_select('node', 'n');
   $query->innerJoin('field_data_field_user_id', 'fu', 'n.nid=fu.entity_id');
-  $query->fields('n', array('nid'));
+  $query->fields('n', array('nid', 'title'));
   $query->fields('fu', array('field_user_id_value'));
   $result = $query->execute()->fetchAll();
   if (!empty($result)) {
     $return = array();
     foreach ($result as $item) {
-      $return[$item->nid] = $item->field_user_id_value;
+      $return[$item->nid] = array(
+        'doid' => $item->field_user_id_value,
+        'do_nickname' => $item->title,
+      );
     }
     return $return;
   } else {
@@ -926,20 +926,20 @@ function _ppgetstat_process_dorg_users($users_data, $doids, $tid) {
     }
 
     if (!empty($node->nid)) {
-      if (_ppgetstat_node_diff($old_node, $node,
+      /*if (_ppgetstat_node_diff($old_node, $node,
         array(
           'field_job_titles',
           'field_organisations',
           'field_mentors',
           'title'
         )
-      )) {
+      )) {*/
         // Uf user has updated something at profile - adding new revision.
         $node->revision = 1;
         $node->log = 'User rescan: ' . date('Y-m-d H:i');
-        watchdog('dorg_users_import', 'Updating user @user', array('@user'=> l($node->title, 'node/' . $node->nid)));
+        watchdog('dorg_users_import', 'Updating user @user', array('@user' => l($node->title, 'node/' . $node->nid)));
         node_save($node);
-      }
+      //}
     } else {
       node_save($node);
       watchdog('dorg_users_import', 'Adding new user @user', array('@user'=> l($node->title, 'node/' . $node->nid)));
