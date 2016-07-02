@@ -6,16 +6,18 @@
  */
 
 /**
- * Implements hook_theme().
+ * Implements hook_menu().
  */
-/*function pp_frontpage_theme() {
-  return array(
-    'about_block' => array(
-      'render element' => 'data',
-      'template' => 'plugins/templates/about_block'
-    ),
+function pp_frontpage_menu() {
+  $items['group_calendar_stat/%'] = array(
+    'title' => 'Commits Tsv',
+    'description' => 'user group months statistics.',
+    'page callback' => 'pp_frontpage_calendar_stat',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
   );
-}*/
+  return $items;
+}
 
 /**
  * Implements hook_ctools_plugin_directory().
@@ -24,4 +26,31 @@ function pp_frontpage_ctools_plugin_directory($owner, $plugin_type) {
   if ($owner == 'ctools' && $plugin_type == 'content_types') {
     return 'plugins/content_types';
   }
+}
+
+/**
+ * Render callback for calendar stat csv output.
+ */
+function pp_frontpage_calendar_stat($user_lists_tid) {
+  $query = db_select('ppgetstat', 'p')
+    ->fields('p', array('doid', 'timestamp', 'type'))
+    ->condition('p.user_group_tid', $user_lists_tid)
+    ->condition('p.timestamp', mktime(0,0,0, 1 , 1, date('Y')), '>=')
+    ->execute()
+    ->fetchAll();
+  $doids = $day_stat = array();
+  foreach ($query as $temp) {
+    if (isset($doids[$temp->doid])) {
+      $doids[$temp->doid]++;
+    } else {
+      $doids[$temp->doid] = 1;
+    }
+    $day_stat[date('Y-m-d', $temp->timestamp)]++;
+
+  }
+
+
+  $users = _ppgetstat_get_users_by_doids(array_keys($doids));
+
+  return drupal_json_output($day_stat);
 }
