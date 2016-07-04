@@ -65,7 +65,7 @@ function pp_frontpage_community_quality_content_type_render(
     $individual_members_count = $members_stat['members_country_count'][$country];
 
     if ($all_user_count > 0) {
-      $block->title = t('Community statistic');
+      $block->title = t('Community quality');
       $block->content = array(
         '#theme' => 'pp_frontpage_community_quality',
         '#total' => $all_user_count,
