@@ -281,23 +281,16 @@ function ppgetstat_ppgetstat_stats_job(array $users, $force = FALSE) {
 
   foreach ($users as $user) {
     $doid = $user['doid'];
-    $last_scan_week = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
+    $last_scan = db_query('SELECT timestamp FROM {ppgetstat} WHERE doid = :doid AND type = :type ORDER BY timestamp DESC LIMIT 1',
       array(':doid' => $doid, ':type' => PPGETSTAT_TYPE_COMMITS)
     )->fetchField();
 
-    $last_commit_timestamp = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array($doid => array()));
-    $last_commit_timestamp[$doid] = array($last_scan_week => 0);
-    //@TODO Rim this, because filtering is already exist at _ppgetstat_cron_createItem_stats_jobs().
-    $last_scan = max(array(
-      REQUEST_TIME - PPGETSTAT_DEFAULT_TIME_PERIOD_FOR_SCANNING,
-      $last_commit_timestamp[$doid][$last_scan_week],
-    ));
-
-    if (!$force) {
+    if ($force) {
       if ($last_scan > REQUEST_TIME - 24 * 60 * 60) {
         return;
       }
     }
+
     $job[] = array(
       'generate_urls_callback' => '_ppgetstat_get_code_tracking_urls',
       'parse_pages_callback' => '_ppgetstat_parse_commits',
@@ -583,6 +576,7 @@ function _ppgetstat_cron_remove_cached_pages() {
  */
 function _ppgetstat_parse_commits($page_content, $data) {
   $last_scan = $data['last_scan'];
+
   if (empty($page_content)) {
     throw new Exception('Empty page content.');
   }
@@ -607,23 +601,10 @@ function _ppgetstat_parse_commits($page_content, $data) {
       break;
     }
 
-    $period_timestamp = $commit_timestamp - ($commit_timestamp % PPGETSTAT_TIME_PERIOD_GRANULARITY);
-    $last_commits = variable_get('ppgetstat_ppgetstat_last_commit_timestamp', array($data['doid'] => array($period_timestamp => 0)));
-
-    // Save latest commit's date per week into variable.
-    if ($first_commit_timestamp || empty($last_commits[$data['doid']][$period_timestamp])) {
-      $first_commit_timestamp = FALSE;
-
-      if (empty($last_commits[$data['doid']][$period_timestamp]) || $commit_timestamp > $last_commits[$data['doid']][$period_timestamp]) {
-        $last_commits[$data['doid']][$period_timestamp] = $commit_timestamp;
-        variable_set('ppgetstat_ppgetstat_last_commit_timestamp', $last_commits);
-      }
-    }
-
-    if (!isset($commits_counter_array[$period_timestamp])) {
-      // $commits_counter_array[$period_timestamp] = 0;
-    }
-    $commits_counter_array[$period_timestamp][] = $commit_hash;
+    $commits_counter_array[] = array(
+      'hash' => $commit_hash,
+      'timestamp' => $commit_timestamp,
+    );
     $commits_counter++;
   }
 
@@ -633,7 +614,7 @@ function _ppgetstat_parse_commits($page_content, $data) {
   }
 
   $commits_counter_array['#type'] = PPGETSTAT_TYPE_COMMITS;
-
+  watchdog('_ppdorg_debug_2', print_r($commits_counter_array,1));
   return $commits_counter_array;
 }
 
@@ -649,18 +630,17 @@ function _ppgetstat_save_counters($counters_array, $doid) {
   $query->fields('fl', array('field_user_lists_tid'));
   $user_group_tid = $query->execute()->fetchField();
 
-  foreach ($counters_array as $period => &$commits) {
-    foreach ($commits as &$hash) {
+  foreach ($counters_array as $commit) {
+
       db_merge('ppgetstat')
-        ->key(array('doid' => $doid, 'hash' => $hash))
+        ->key(array('doid' => $doid, 'hash' => $commit['hash']))
         ->fields(array(
           'type' => $type,
-          'timestamp' => $period,
+          'timestamp' => $commit['timestamp'],
           'items' => 1,
           'user_group_tid' => $user_group_tid
         ))
         ->execute();
-    }
 
   }
 }
