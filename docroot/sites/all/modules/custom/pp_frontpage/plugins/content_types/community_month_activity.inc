@@ -19,7 +19,7 @@ function pp_frontpage_community_month_activity_content_type_render($subtype, $co
     $query = db_select('ppgetstat', 'p')
       ->fields('p', array('doid', 'timestamp', 'type'))
       ->condition('p.user_group_tid', $user_lists_tid)
-      ->condition('p.timestamp', mktime(0,0,0, 1 , 1, date('Y')), '>=')
+      ->condition('p.timestamp', mktime(0,0,0, 1 , 1, date('Y')-1), '>=')
       ->execute()
       ->fetchAll();
     $doids = $day_stat = array();
@@ -29,9 +29,11 @@ function pp_frontpage_community_month_activity_content_type_render($subtype, $co
       } else {
         $doids[$temp->doid] = 1;
       }
-      $day_stat[date('m', $temp->timestamp)][date('d', $temp->timestamp)][$temp->doid][$temp->type]++;
+      $day_stat[date('Y-m-d', $temp->timestamp)]++;
 
     }
+
+    dpm($day_stat);
     $users = _ppgetstat_get_users_by_doids(array_keys($doids));
     $doids = asort($doids);
     drupal_add_js('http://d3js.org/d3.v3.min.js', 'external');

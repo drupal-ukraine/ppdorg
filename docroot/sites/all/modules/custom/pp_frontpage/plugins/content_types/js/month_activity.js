@@ -50,7 +50,7 @@
 
             rect.filter(function(d) { return d in data; })
                 .style("fill",function(d) {
-                    return "rgba(0,104,55," + data[d]/max_value + ")";
+                    return "rgba(43,169,224," + data[d]/max_value + ")";
                 }).append("text").text(
              function(d){return data[d];}
             )
